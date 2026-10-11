@@ -29,6 +29,11 @@ id = "open-sessions"
 title = "Open magpie session launcher"
 command = ["sh", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin faintghost.magpie --entrypoint sessions --focus"]
 
+[[actions]]
+id = "open-panel"
+title = "Open magpie panel"
+command = ["sh", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin faintghost.magpie --entrypoint panel --focus"]
+
 [[panes]]
 id = "sessions"
 title = "magpie sessions"
@@ -36,6 +41,14 @@ placement = "popup"
 width = "80%"
 height = "80%"
 command = ["./bin/herdr-magpie", "sessions"]
+
+[[panes]]
+id = "panel"
+title = "magpie panel"
+placement = "popup"
+width = "90%"
+height = "90%"
+command = ["./bin/herdr-magpie", "panel"]
 
 [[panes]]
 id = "doctor"

@@ -29,7 +29,8 @@ func logRow(t *testing.T, minutes int, provider string, status int, errText stri
 		"served":   "m-a",
 		"status":   status,
 		"err":      errText,
-		"req":      "req-" + at.Format("150405"),
+		"req":      provider + "/m-a",
+		"rid":      "rid-" + at.Format("150405"),
 	}
 	if errText != "" {
 		fields["err_type"] = "RateLimit"
@@ -217,7 +218,8 @@ func TestTailUsageReadsOnlyTheWindow(t *testing.T) {
 
 func TestTailUsageMapsRows(t *testing.T) {
 	path := writeLog(t, `{"t":"2026-10-12T00:59:00.123+09:00","agent":"alpha","provider":"p9","host":"gw.example.test",`+
-		`"model":"m-a","served":"m-b","status":429,"err":"boom","err_type":"RateLimit","req":"r1","ep":"/v1/x"}`+"\n"+
+		`"model":"m-a","req":"p9/m-req","served":"m-b","status":429,"err":"boom","err_type":"RateLimit","rid":"r1",`+
+		`"ttft_ms":1500,"ep":"/v1/x"}`+"\n"+
 		`{"t":"2026-10-12T00:59:01+09:00","agent":"beta","provider":"p2","model":"m-c","status":200}`+"\n")
 	reqs, err := TailUsage(path, time.Time{}, 0)
 	if err != nil {
@@ -229,7 +231,7 @@ func TestTailUsageMapsRows(t *testing.T) {
 	want := Request{
 		Time:           time.Date(2026, 10, 11, 15, 59, 0, 123000000, time.UTC),
 		Agent:          "alpha",
-		RequestedModel: "m-a",
+		RequestedModel: "p9/m-req",
 		ServedModel:    "m-b",
 		Swapped:        true,
 		Provider:       "p9",
@@ -239,6 +241,7 @@ func TestTailUsageMapsRows(t *testing.T) {
 		ErrorType:      "RateLimit",
 		ErrorMessage:   "boom",
 		RequestID:      "r1",
+		TTFT:           1500 * time.Millisecond,
 	}
 	got := reqs[0]
 	if !got.Time.Equal(want.Time) {
@@ -250,5 +253,57 @@ func TestTailUsageMapsRows(t *testing.T) {
 	}
 	if ok := reqs[1]; ok.Swapped || ok.Error || ok.Status != 200 || ok.ServedModel != "" {
 		t.Errorf("successful row = %+v; want no swap and no error", ok)
+	}
+}
+
+// TestUsageLineMapping checks which fields a usage.jsonl row fills. The cases mirror
+// the shapes seen in the real log: a "provider/model" request answered by the
+// same provider model, a routing group, a true swap, and a row from before req
+// was kept.
+func TestUsageLineMapping(t *testing.T) {
+	const at = `"t":"2026-10-12T00:59:00Z","agent":"alpha","provider":"p1",`
+	tests := []struct {
+		name          string
+		line          string
+		wantRequested string
+		wantServed    string
+		wantSwapped   bool
+		wantTTFT      time.Duration
+		wantRequestID string
+	}{
+		{
+			name:          "provider prefix is not a swap",
+			line:          `{` + at + `"req":"p1/m-a","model":"m-a","served":"m-a"}`,
+			wantRequested: "p1/m-a", wantServed: "m-a",
+		},
+		{
+			name:          "routing group answered by its provider model",
+			line:          `{` + at + `"req":"group/auto","model":"glm-5.3","served":"glm-5.3","ttft_ms":420}`,
+			wantRequested: "group/auto", wantServed: "glm-5.3", wantTTFT: 420 * time.Millisecond,
+		},
+		{
+			name:          "answer differs from the provider model",
+			line:          `{` + at + `"req":"x/x-latest","model":"x-latest","served":"x-1.13","rid":"abc"}`,
+			wantRequested: "x/x-latest", wantServed: "x-1.13", wantSwapped: true, wantRequestID: "abc",
+		},
+		{
+			name:          "record from before req was kept falls back to the provider model",
+			line:          `{` + at + `"model":"m-c","status":200}`,
+			wantRequested: "m-c",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := decodeUsageLine([]byte(tc.line))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.RequestedModel != tc.wantRequested || got.ServedModel != tc.wantServed ||
+				got.Swapped != tc.wantSwapped || got.TTFT != tc.wantTTFT || got.RequestID != tc.wantRequestID {
+				t.Errorf("got requested %q served %q swapped %v ttft %v rid %q; want %q %q %v %v %q",
+					got.RequestedModel, got.ServedModel, got.Swapped, got.TTFT, got.RequestID,
+					tc.wantRequested, tc.wantServed, tc.wantSwapped, tc.wantTTFT, tc.wantRequestID)
+			}
+		})
 	}
 }

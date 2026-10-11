@@ -147,12 +147,35 @@ func TestCardLinesManyWindows(t *testing.T) {
 	}
 }
 
-func TestBalanceCardSaysSo(t *testing.T) {
+func TestBalanceCardShowsTheBalance(t *testing.T) {
 	src := sampleSource()
 	cards := buildCards(src.quotas, src.accounts)
-	lines := cardLines(cards[3], false, testNow, src.agents, 80, newStyles(newRenderer(io.Discard, false)))
-	if got := strings.Join(lines, "\n"); !strings.Contains(got, "balance: amount not wired yet") {
+	st := newStyles(newRenderer(io.Discard, false))
+	lines := cardLines(cards[3], false, testNow, src.agents, 80, st)
+	if got := strings.Join(lines, "\n"); !strings.Contains(got, "balance: not reported") {
+		t.Errorf("balance card without an amount:\n%s", got)
+	}
+	cards[3].quota.Balance = "$12.34"
+	lines = cardLines(cards[3], false, testNow, src.agents, 80, st)
+	if got := strings.Join(lines, "\n"); !strings.Contains(got, "balance: $12.34") {
 		t.Errorf("balance card:\n%s", got)
+	}
+}
+
+func TestQuotaErrorReplacesTheWindows(t *testing.T) {
+	c := card{quota: magpie.Quota{
+		Provider: "claude", Name: "Claude Code", Kind: "subscription", Plan: "Max 20x", User: "dev@example.test",
+		Windows: []magpie.QuotaWindow{{Name: "5 hours", Used: 62}},
+		Error:   "token expired\nlog in again",
+	}}
+	lines := cardLines(c, false, testNow, nil, 80, newStyles(newRenderer(io.Discard, false)))
+	assertLines(t, lines, 80)
+	got := strings.Join(lines, "\n")
+	if !strings.Contains(got, "error: token expired log in again") {
+		t.Errorf("card lacks its error line:\n%s", got)
+	}
+	if strings.Contains(got, "5 hours") || strings.Contains(got, "used") {
+		t.Errorf("an errored card should not draw its windows:\n%s", got)
 	}
 }
 

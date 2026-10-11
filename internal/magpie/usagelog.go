@@ -2,6 +2,7 @@ package magpie
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -31,17 +32,25 @@ type TailStats struct {
 // usageLine holds the fields of one usage.jsonl line that the plugin reads. The
 // log is written by magpie's gateway and is not a stable contract, so fields are
 // matched by name and every other field is ignored.
+//
+// The meanings follow magpie's usage record (internal/usage.Record) and were
+// checked against the log on 2026-10-12: req is the model the agent asked for,
+// often in the form "provider/model"; model is the provider's model id, and
+// served differs from it only on the 11 swapped rows; rid is the request id, and
+// only a few rows carry it.
 type usageLine struct {
 	T        string `json:"t"` // RFC 3339 with offset
 	Agent    string `json:"agent"`
 	Provider string `json:"provider"`
 	Host     string `json:"host"`
-	Model    string `json:"model"`  // the model the client asked for
-	Served   string `json:"served"` // the model that answered, when known
+	Model    string `json:"model"`  // the provider's model id
+	Req      string `json:"req"`    // the model the agent asked for; missing in records from before it was kept
+	Served   string `json:"served"` // the model the vendor's reply named, when it named one
 	Status   int    `json:"status"`
 	Err      string `json:"err"` // provider error message; empty on success
 	ErrType  string `json:"err_type"`
-	Req      string `json:"req"`
+	RID      string `json:"rid"`     // request id; empty on most rows
+	TTFTMS   int64  `json:"ttft_ms"` // ms from the request to its first content; 0 when not streamed
 }
 
 // TailUsage returns the usage rows in the log at path whose time is at or after
@@ -143,6 +152,11 @@ func tailUsage(path string, since time.Time, maxBytes, block int64) ([]Request, 
 // comes from the gateway, so Source stays empty: `magpie usage --csv` leaves the
 // source column empty for gateway rows, and "log" marks rows from agent logs.
 // Session, cost and account fields are not in the log and are left zero.
+//
+// Swapped compares the vendor's answer with the provider model the gateway sent,
+// not with the requested model: a routing group or a "provider/" prefix makes the
+// request differ from its provider id, and that is not a swap. A record from
+// before req was kept names only the provider model, which then stands for the request.
 func decodeUsageLine(line []byte) (Request, error) {
 	var u usageLine
 	if err := json.Unmarshal(line, &u); err != nil {
@@ -155,7 +169,7 @@ func decodeUsageLine(line []byte) (Request, error) {
 	return Request{
 		Time:           at,
 		Agent:          u.Agent,
-		RequestedModel: u.Model,
+		RequestedModel: cmp.Or(u.Req, u.Model),
 		ServedModel:    u.Served,
 		Swapped:        u.Served != "" && u.Served != u.Model,
 		Provider:       u.Provider,
@@ -164,6 +178,7 @@ func decodeUsageLine(line []byte) (Request, error) {
 		Status:         u.Status,
 		ErrorType:      u.ErrType,
 		ErrorMessage:   u.Err,
-		RequestID:      u.Req,
+		RequestID:      u.RID,
+		TTFT:           time.Duration(u.TTFTMS) * time.Millisecond,
 	}, nil
 }

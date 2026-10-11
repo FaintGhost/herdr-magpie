@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
 func testEnv(stdout, stderr *bytes.Buffer) env {
@@ -164,5 +166,75 @@ func TestDryRunEnabled(t *testing.T) {
 				t.Errorf("dryRunEnabled() with %q = %t, want %t", tt.value, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestDryMagpieRunner(t *testing.T) {
+	fake := &fakeTools{out: map[string]string{"magpie quota --json": `[]`}}
+	var out bytes.Buffer
+	d := dryMagpieRunner{out: &out, inner: fake}
+
+	if _, err := d.Run(t.Context(), "magpie", "quota", "--json"); err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	if len(fake.calls) != 1 {
+		t.Fatalf("read was not passed through: calls = %q", fake.calls)
+	}
+
+	for _, args := range [][]string{
+		{"use", "example"},
+		{"save", "example"},
+		{"accounts", "switch", "claude", "person@example.test"},
+	} {
+		if _, err := d.Run(t.Context(), "magpie", args...); err != nil {
+			t.Fatalf("write %q: %v", args, err)
+		}
+	}
+	if len(fake.calls) != 1 {
+		t.Errorf("a magpie write reached the real runner: calls = %q", fake.calls)
+	}
+	want := "dry-run: would run magpie use example\n" +
+		"dry-run: would run magpie save example\n" +
+		"dry-run: would run magpie accounts switch claude person@example.test\n"
+	if out.String() != want {
+		t.Errorf("dry-run output = %q, want %q", out.String(), want)
+	}
+}
+
+func TestIsMagpieRead(t *testing.T) {
+	tests := []struct {
+		args []string
+		want bool
+	}{
+		{args: []string{"ls"}, want: true},
+		{args: []string{"profiles"}, want: true},
+		{args: []string{"models", "claude"}, want: true},
+		{args: []string{"quota", "--json"}, want: true},
+		{args: []string{"sessions", "--json", "--limit", "100000"}, want: true},
+		{args: []string{"usage", "--csv", "today"}, want: true},
+		{args: []string{"accounts"}, want: true},
+		{args: []string{"accounts", "--json"}, want: true},
+		{args: []string{"use", "example"}},
+		{args: []string{"save", "example"}},
+		{args: []string{"accounts", "switch", "claude", "x@example.test"}},
+		{args: []string{"accounts", "add"}},
+		{args: []string{"claude", "gpt-x"}},
+		{args: []string{"gateway-key", "add", "herdr"}},
+		{},
+	}
+	for _, tt := range tests {
+		if got := isMagpieRead(tt.args); got != tt.want {
+			t.Errorf("isMagpieRead(%q) = %t, want %t", tt.args, got, tt.want)
+		}
+	}
+}
+
+func TestMagpieRunnerFollowsDryRun(t *testing.T) {
+	var out bytes.Buffer
+	if _, ok := (env{stderr: &out}).magpieRunner().(magpie.ExecRunner); !ok {
+		t.Error("without dry-run, the magpie runner is not the real one")
+	}
+	if _, ok := (env{stderr: &out, dryRun: true}).magpieRunner().(dryMagpieRunner); !ok {
+		t.Error("with dry-run, the magpie runner does not print the writes")
 	}
 }

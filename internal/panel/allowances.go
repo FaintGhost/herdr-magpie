@@ -98,8 +98,9 @@ func windowLine(win magpie.QuotaWindow, now time.Time, w int, st styles) string 
 	return line(w, segs...)
 }
 
-// cardLines draws one card: a title line, then one line per usage window, or a
-// note for a balance or a card with no windows, then a blank line below.
+// cardLines draws one card: a title line, then either one warning line when magpie
+// could not read the allowance, or one line per usage window, or the balance, or a
+// note for a card with no windows; then a blank line below.
 func cardLines(c card, selected bool, now time.Time, agents []magpie.AgentInfo, w int, st styles) []string {
 	mark, titleStyle := "  ", st.base
 	if selected {
@@ -114,8 +115,15 @@ func cardLines(c card, selected bool, now time.Time, agents []magpie.AgentInfo, 
 
 	q := c.quota
 	switch {
+	case q.Error != "":
+		// magpie could not read this allowance, so there are no windows to show.
+		lines = append(lines, line(w, seg{"    error: " + clean(q.Error), st.warn}))
 	case q.Kind == "balance":
-		lines = append(lines, line(w, seg{"    balance: amount not wired yet (batch 2)", st.dim}))
+		text, style := "    balance: not reported", st.dim
+		if b := clean(q.Balance); b != "" {
+			text, style = "    balance: "+b, st.base
+		}
+		lines = append(lines, line(w, seg{text, style}))
 	case len(q.Windows) == 0:
 		lines = append(lines, line(w, seg{"    no usage windows reported", st.dim}))
 	default:

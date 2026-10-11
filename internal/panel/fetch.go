@@ -8,6 +8,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/FaintGhost/herdr-magpie/internal/herdr"
 	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
@@ -21,8 +22,6 @@ const (
 var (
 	// fetchTimeout bounds each Source method. It is a variable so tests can shorten it.
 	fetchTimeout = 6 * time.Second
-	// switchTimeout bounds SwitchAccount, a write that may take longer.
-	switchTimeout = 30 * time.Second
 
 	errTimeout = errors.New("timed out")
 )
@@ -47,6 +46,7 @@ type snapshot struct {
 	Profiles stamp[[]magpie.Profile]     `json:"profiles"`
 	Requests stamp[[]magpie.Request]     `json:"requests"`
 	APIUsage stamp[*magpie.UsageSummary] `json:"api_usage"`
+	Sessions stamp[[]magpie.Session]     `json:"sessions"`
 }
 
 // at is when feed f was last read, zero when never.
@@ -64,6 +64,8 @@ func (s snapshot) at(f feed) time.Time {
 		return s.Requests.At
 	case feedAPIUsage:
 		return s.APIUsage.At
+	case feedSessions:
+		return s.Sessions.At
 	}
 	return time.Time{}
 }
@@ -92,6 +94,14 @@ type (
 	}
 	apiUsageMsg struct {
 		v   *magpie.UsageSummary
+		err error
+	}
+	sessionsMsg struct {
+		v   []magpie.Session
+		err error
+	}
+	panesMsg struct {
+		v   []herdr.Agent
 		err error
 	}
 )

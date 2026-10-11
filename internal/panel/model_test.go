@@ -299,8 +299,8 @@ func TestSwitchWritesOnlyAfterTheConfirmLine(t *testing.T) {
 	}
 	press(m, "enter") // ops is not active, so the confirm line appears
 	want := "Switch Claude Code to ops@example.test? Enter to confirm, Esc to cancel"
-	if m.flow != flowConfirm || clean(m.confirmText()) != want {
-		t.Fatalf("confirm line = %q, flow %v", m.confirmText(), m.flow)
+	if m.ask == nil || clean(m.ask.text) != want {
+		t.Fatalf("confirm line = %+v", m.ask)
 	}
 	if got := ansiFree(m.statusLine(120)); !strings.Contains(got, want) {
 		t.Errorf("status line = %q", got)
@@ -434,12 +434,16 @@ func TestWindowSizeIsTracked(t *testing.T) {
 	}
 }
 
-func TestPlaceholderTabs(t *testing.T) {
+func TestEveryTabHasItsOwnBody(t *testing.T) {
 	m := sized(t, Deps{Source: sampleSource()}, 80, 24)
-	for _, k := range []string{"1", "4", "5"} {
-		press(m, k)
-		if got := m.View(); !strings.Contains(got, "coming in batch 2") {
-			t.Errorf("tab %v has no placeholder", m.tab)
+	for _, c := range []struct {
+		key, want string
+	}{
+		{"1", "Agents"}, {"2", "Max 20x"}, {"3", "Provider errors"}, {"4", "last 1h"}, {"5", "press / to filter"},
+	} {
+		press(m, c.key)
+		if got := m.View(); !strings.Contains(got, c.want) {
+			t.Errorf("tab %v lacks %q:\n%s", m.tab, c.want, got)
 		}
 	}
 }

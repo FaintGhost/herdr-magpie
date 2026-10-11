@@ -27,6 +27,7 @@ $3.12                                   工作区侧栏（示意）
 | 工作区侧栏 | `$magpie_cost`：工作区内打开的会话成本合计 | 同 agent 侧栏 |
 | 通知 | 网关离线与恢复；某个提供方风暴开始 | 状态变化时 |
 | 弹窗 pane | 会话启动器：列出所有 agent 的 magpie 会话。Enter 聚焦已打开的会话；否则在会话目录所在的工作区新建 tab，没有这样的工作区时为该目录新建工作区，并在其中恢复它 | 按需 |
+| 弹窗 pane（面板） | 面板：agent、额度、用量、路由与会话集中在一个全屏弹窗中；profile 与账号切换需确认后才执行 | 按需 |
 
 风暴按提供方统计。风暴指的是：经网关发往某个提供方的近期请求，以相同的状态码失败了多次。它不指向具体 pane，因为经过网关的请求不携带会话 ID。
 
@@ -62,7 +63,7 @@ herdr plugin pane open --plugin faintghost.magpie --entrypoint setup
 
 - `tab_bar_right`：一个命令项，每 10 秒运行一次 `status`，并带有防护，二进制缺失时不输出任何内容。
 - `[ui.sidebar.agents]` 与 `[ui.sidebar.spaces]`：把 `$magpie_*` token 加入你已经在用的行。
-- 可选的 `[[keys.command]]`：默认 `prefix+m`，调用 `open-sessions` action 打开会话弹窗。
+- 可选的 `[[keys.command]]`：`prefix+m` 调用 `open-sessions` action 打开会话弹窗，`prefix+M` 打开面板。
 
 侧边栏布局与快捷键读取的是**客户端**的配置。如果你用 `herdr --remote` 连接，请把侧边栏 rows 和快捷键写进你发起连接那台机器的 `config.toml`；状态栏条目仍放在服务器上。
 
@@ -78,13 +79,57 @@ herdr plugin pane open --plugin faintghost.magpie --entrypoint sessions
 
 弹窗按最近活动从新到旧列出会话。输入文字可按 agent、标题或目录过滤。方向键或 Ctrl-P、Ctrl-N 移动。Enter 执行操作：若会话已打开则聚焦它；否则，若某个工作区中有 agent 位于该会话的目录，就在那个工作区新建一个 tab，没有则为该目录新建一个工作区，并在其中运行该会话的恢复命令。会话没有目录或目录已不存在时，tab 开在当前工作区，弹窗保持打开并在底部显示提示。Esc 或 Ctrl-C 退出。
 
+### 面板
+
+按 `prefix+M`（默认前缀下即先按 Ctrl+B，再按 Shift+M），或运行：
+
+```sh
+herdr plugin pane open --plugin faintghost.magpie --entrypoint panel
+```
+
+面板占据大部分屏幕，共五个 tab。Tab 与 Shift+Tab 切换，数字键 1 到 5 直接跳到对应的 tab：
+
+- **Agents**：magpie 识别到的每个 agent，附带模型与 effort，以及运行它的 Herdr pane 及其状态。只读。
+- **Allowances**：订阅额度窗口（已用比例、重置倒计时）、余额、读取错误，以及各 agent 的账号。在账号上按 Enter 即选中该账号以便切换。
+- **Usage**：最近 10 分钟与最近 1 小时的请求数，今日按提供方统计的请求与错误，首 token 时间，以及活跃的风暴。配置了网关 key 时，还会显示网关给出的今日调用数与花费。
+- **Routing**：最近的请求，每条显示为“请求的模型 → 实际响应的模型”。
+- **Sessions**：会话启动器，以 tab 形式呈现。Enter 的效果与启动器相同。
+
+面板会立即显示上一次的快照（保存在插件状态目录的 `panel.json` 中），并在后台刷新各项数据。某项数据读取失败时，其位置显示错误，其余数据照常工作。
+
+按键：上下键在列表中移动，Enter 对选中行执行操作。`/` 过滤 Sessions。`p` 打开 profile 列表，`S` 把当前设置保存为 profile。`r` 立即刷新。`q`、Esc 或 Ctrl-C 退出。
+
+写操作会改变 magpie 或 Herdr 的状态。每项写操作都会先显示一行确认：Enter 执行，Esc 取消。
+
+- 应用已保存的 profile（`magpie use <name>`），或把当前设置保存为 profile（`magpie save <name>`）。面板从不删除 profile。
+- 切换某个 agent 使用的账号（`magpie accounts switch <agent> <account>`）。
+- 应用 profile 或切换账号之后，面板会提议重启受影响 agent 所在的 Herdr pane，逐个确认。只有 pane 处于 idle 或 done 时才会重启：面板在执行前会再次检查，关闭该 pane，并在同一工作区、同一目录的新 tab 中恢复其会话。
+
+不提供的操作：修改模型或 effort、删除 profile、登录与登出、修改提供方或网关 key，以及 `magpie plugin`。
+
+**网关 key（可选）。** Usage 中来自网关的数据（今日调用数与花费）需要网关 key，它是一个机密。Routing 以及 Usage 的其余部分读取 usage 日志，不需要 key。创建一个不设任何限额的 key，并保存到插件配置目录中，与 `config.json` 放在一起：
+
+```sh
+magpie gateway-key add herdr
+```
+
+把 magpie 打印出的 key 以单行形式写入该目录下的 `gateway-key` 文件，权限为 0600。用 `cat` 写入可以让 key 不出现在命令行中：
+
+```sh
+dir="$(herdr plugin config-dir faintghost.magpie)"
+(umask 077 && cat > "$dir/gateway-key")   # 粘贴 key，回车，再按 Ctrl-D
+chmod 600 "$dir/gateway-key"
+```
+
+创建 key 时不要设置预算、模型或账号限制。受限的 key 只能看到它自己的调用，网关也会拒绝为它返回用量汇总，面板因此只能显示一部分用量。插件只在 `GET /api/hello` 与 `GET /v1/magpie/*` 请求中发送该 key，从不打印，也从不把它放进命令行。doctor 会检查文件权限，以及网关是否接受该 key。没有 key 时面板照常工作，只是不显示网关数据。
+
 ### doctor 诊断
 
 ```sh
 herdr plugin pane open --plugin faintghost.magpie --entrypoint doctor
 ```
 
-doctor 会检查配置、magpie 与 herdr 二进制、网关探测（包括网关 URL 及其来源）、它发起的那一次 magpie 调用耗时、usage 日志（路径、大小、最新一行距今多久、最近十分钟的网关行数），以及有多少 agent pane 能匹配到 magpie 会话。usage 日志缺失只是警告，风暴通知随之关闭。只有检查失败时才以非零状态退出。输出不包含任何凭据，也不包含会话标题或路径。
+doctor 会检查配置、magpie 与 herdr 二进制、网关探测（包括网关 URL 及其来源）、它发起的那一次 magpie 调用耗时、usage 日志（路径、大小、最新一行距今多久、最近十分钟的网关行数），有多少 agent pane 能匹配到 magpie 会话，以及网关 key。usage 日志缺失或没有网关 key 只是警告：前者使风暴通知关闭，后者使面板不显示网关数据。key 文件权限不是 0600，或网关拒绝该 key，则为失败。只有检查失败时才以非零状态退出。输出不包含任何凭据，也不包含会话标题或路径。
 
 ## 配置
 
@@ -127,7 +172,8 @@ herdr plugin config-dir faintghost.magpie
 
 ## 隐私
 
-- 从不读取 magpie 的 settings、logins、auth 或密钥文件，也不需要 gateway 密钥。
+- 从不读取 magpie 的 settings、logins、auth 或密钥文件。status 与 refresh 不需要 gateway 密钥；面板可以使用它，见“面板”一节。
+- 面板会运行它所显示内容对应的 magpie 命令：`ls`、`quota --json`、`accounts --json`、`profiles` 与 `sessions --json`。只有在你确认后才会运行 `use`、`save` 与 `accounts switch`。gateway 密钥只随 `GET /api/hello` 与 `GET /v1/magpie/*` 请求发送。
 - 只运行一条 magpie 命令：`magpie sessions --json --limit 100000`，且是只读的。每次 magpie CLI 调用都会改写 magpie 的凭据文件，因此插件大约每五分钟调用一次，事件触发时也至多每分钟一次。
 - 每个顶栏刷新周期向网关发送一次未认证的 `GET /v1/models`。自报身份为 magpie 的 401 响应视为在线。
 - 只读取 magpie 的 usage 日志（默认 `~/.config/magpie/usage.jsonl`），只读。每次从文件末尾向前读取，最多 4 MiB。该日志是 magpie 的内部网关日志，不是文档化的接口，其格式可能随 magpie 版本变化。插件无法解析的行会被跳过，并由 doctor 计数。
@@ -143,6 +189,7 @@ herdr plugin config-dir faintghost.magpie
 - 风暴统计的是 usage 日志中最近十分钟的数据。插件最多读取日志末尾的 4 MiB，在当前流量下远超十分钟；流量大得多的网关可能少计风暴。读取超过 300 毫秒预算时，沿用上一次结果，最长十分钟。
 - 成本是 magpie 自己的估算。
 - 安装后看到的第一个网关状态从不发送通知。只有两个已确认状态之间的变化才会通知。
+- 面板不修改模型、effort、提供方或路由组，这些请使用 `magpie tui`。它会误判仅局域网可达的网关，插件日志行也可能弄乱它的屏幕（上游 issue #1677）。
 
 ## 开发
 

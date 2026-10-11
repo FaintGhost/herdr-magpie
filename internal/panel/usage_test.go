@@ -145,3 +145,31 @@ func TestUsageLinesFitTheHeight(t *testing.T) {
 		}
 	}
 }
+
+func TestTTFTP50IsTheMedianOfTheWindow(t *testing.T) {
+	reqs := []magpie.Request{
+		{Time: testNow, TTFT: 100 * time.Millisecond},
+		{Time: testNow, TTFT: 300 * time.Millisecond},
+		{Time: testNow, TTFT: 900 * time.Millisecond},
+		{Time: testNow.Add(-2 * time.Hour), TTFT: 5 * time.Second}, // outside the window
+		{Time: testNow}, // no time to first token
+	}
+	d, ok := ttftP50(reqs, testNow.Add(-time.Hour))
+	if !ok || d != 300*time.Millisecond {
+		t.Errorf("median = %v, %v; want 300ms", d, ok)
+	}
+	if _, ok := ttftP50(nil, testNow.Add(-time.Hour)); ok {
+		t.Error("no requests should have no median")
+	}
+}
+
+func TestUsageShowsTheTTFTRow(t *testing.T) {
+	m := panelModel(t, samplePanelSource(), nil, nil, 120, 32)
+	press(m, "3")
+	view := m.View()
+	for _, want := range []string{"ttft p50", "800ms", "1.0s"} {
+		if !strings.Contains(view, want) {
+			t.Errorf("Usage tab lacks %q:\n%s", want, view)
+		}
+	}
+}

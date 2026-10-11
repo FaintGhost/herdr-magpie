@@ -53,6 +53,8 @@ type rawQuota struct {
 	Windows      []rawWindow `json:"windows"`
 	ReadAt       string      `json:"readAt"`
 	LastServedAt string      `json:"lastServedAt"`
+	Balance      string      `json:"balance"`
+	Error        string      `json:"error"`
 }
 
 type rawAccount struct {
@@ -82,6 +84,8 @@ func (q rawQuota) quota() Quota {
 		Windows:      windows(q.Windows),
 		ReadAt:       looseTime(q.ReadAt),
 		LastServedAt: looseTime(q.LastServedAt),
+		Balance:      q.Balance,
+		Error:        q.Error,
 	}
 }
 

@@ -94,6 +94,16 @@ func (c *Client) RunInPane(ctx context.Context, pane, command string) error {
 	return err
 }
 
+// ClosePane closes pane (herdr pane close). Closing an agent pane ends the
+// process running in it.
+func (c *Client) ClosePane(ctx context.Context, pane string) error {
+	if err := checkArg("pane", pane); err != nil {
+		return err
+	}
+	_, err := c.run(ctx, "pane", "close", pane)
+	return err
+}
+
 // FocusPane focuses the agent in pane (herdr agent focus). `herdr pane focus`
 // only moves by direction, so it cannot target a pane id.
 func (c *Client) FocusPane(ctx context.Context, pane string) error {

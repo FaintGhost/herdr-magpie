@@ -8,56 +8,21 @@ import (
 	"time"
 	"unicode"
 
-	"golang.org/x/text/width"
+	"github.com/FaintGhost/herdr-magpie/internal/launcher"
 )
 
 // barCells is how many cells a usage bar draws.
 const barCells = 10
 
-// runeWidth is the number of terminal columns r takes. East Asian wide and
-// fullwidth characters take two, and combining and format characters take none.
-// It is the rule internal/launcher uses, so the two screens agree on Chinese text.
-func runeWidth(r rune) int {
-	if unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf) {
-		return 0
-	}
-	switch width.LookupRune(r).Kind() {
-	case width.EastAsianWide, width.EastAsianFullwidth:
-		return 2
-	}
-	return 1
-}
-
-// displayWidth is the number of terminal columns s takes.
+// displayWidth is the number of terminal columns s takes. It is the launcher's
+// rule, so the sessions list and the rest of the panel agree on Chinese text.
 func displayWidth(s string) int {
-	n := 0
-	for _, r := range s {
-		n += runeWidth(r)
-	}
-	return n
+	return launcher.DisplayWidth(s)
 }
 
 // fit returns s cut or padded with spaces to exactly w columns. A cut ends in "…".
 func fit(s string, w int) string {
-	if w <= 0 {
-		return ""
-	}
-	sw := displayWidth(s)
-	if sw <= w {
-		return s + strings.Repeat(" ", w-sw)
-	}
-	var b strings.Builder
-	used := 0
-	for _, r := range s {
-		rw := runeWidth(r)
-		if used+rw > w-1 {
-			break
-		}
-		b.WriteRune(r)
-		used += rw
-	}
-	b.WriteString("…")
-	return b.String() + strings.Repeat(" ", w-used-1)
+	return launcher.Fit(s, w)
 }
 
 // rjust right-aligns s in w columns. A s wider than w is cut.

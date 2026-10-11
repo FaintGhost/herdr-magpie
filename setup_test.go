@@ -50,6 +50,8 @@ func TestSetupTextSnippets(t *testing.T) {
 		`key = "prefix+m"`,
 		`type = "plugin_action"`,
 		`command = "faintghost.magpie.open-sessions"`,
+		`key = "prefix+M"`,
+		`command = "faintghost.magpie.open-panel"`,
 		"herdr config check",
 		"Nothing is written to your configuration",
 	}

@@ -1,9 +1,12 @@
 package magpie
 
 import (
+	"context"
 	"errors"
 	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 // The write functions are tested with a fake Runner only. Their argv is checked
@@ -55,5 +58,41 @@ func TestActionsReturnRunnerError(t *testing.T) {
 	r := &fakeRunner{errs: map[string]error{"magpie use example": errors.New("boom")}}
 	if err := UseProfile(t.Context(), r, "", "example"); err == nil {
 		t.Error("UseProfile ignored the runner error")
+	}
+}
+
+// callRunner records what the context looked like when the command ran.
+type callRunner struct {
+	cancelled   error     // ctx.Err() at the call
+	deadline    time.Time // the context's deadline at the call
+	hasDeadline bool
+	calls       []string
+}
+
+func (r *callRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	r.cancelled = ctx.Err()
+	r.deadline, r.hasDeadline = ctx.Deadline()
+	r.calls = append(r.calls, strings.Join(append([]string{name}, args...), " "))
+	return nil, nil
+}
+
+func TestWritesOutliveCancelAndGetLongTimeout(t *testing.T) {
+	cancelled, cancel := context.WithCancel(t.Context())
+	cancel() // the panel has quit while the write is pending
+	r := &callRunner{}
+	if err := SwitchAccount(cancelled, r, "/opt/magpie", "claude", "person@example.test"); err != nil {
+		t.Fatal(err)
+	}
+	if r.cancelled != nil {
+		t.Errorf("write ran with a cancelled context: %v", r.cancelled)
+	}
+	if !r.hasDeadline {
+		t.Fatal("write ran without a deadline")
+	}
+	if left := time.Until(r.deadline); left < writeTimeout-5*time.Second || left > writeTimeout {
+		t.Errorf("deadline in %v, want about %v", left, writeTimeout)
+	}
+	if want := []string{"/opt/magpie accounts switch claude person@example.test"}; !slices.Equal(r.calls, want) {
+		t.Errorf("calls = %q, want %q", r.calls, want)
 	}
 }

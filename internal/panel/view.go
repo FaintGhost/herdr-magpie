@@ -1,6 +1,7 @@
 package panel
 
 import (
+	"cmp"
 	"strings"
 	"time"
 )
@@ -65,6 +66,12 @@ func (m *Model) ageText() string {
 			oldest = at
 		}
 	}
+	if m.tabUsesPanes() {
+		pending = pending || m.panes.pending
+		if at := m.panes.at; !at.IsZero() && (oldest.IsZero() || at.Before(oldest)) {
+			oldest = at
+		}
+	}
 	parts := []string{"no data yet"}
 	if !oldest.IsZero() {
 		verb := "updated "
@@ -84,16 +91,25 @@ func (m *Model) ageLine(w int) string {
 	return line(w, seg{m.ageText(), m.st.dim})
 }
 
-// body draws the current tab in exactly n lines.
+// body draws the current tab in exactly n lines. The restart walk and the profile
+// list cover the tab while they are open.
 func (m *Model) body(w, n int) []string {
 	var lines []string
-	switch m.tab {
-	case tabAllowances:
+	switch {
+	case m.walk.active:
+		lines = m.restartLines(w, n)
+	case m.prof.open:
+		lines = m.profileLines(w, n)
+	case m.tab == tabAgents:
+		lines = m.agentsLines(w, n)
+	case m.tab == tabAllowances:
 		lines = m.allowancesLines(w, n)
-	case tabUsage:
+	case m.tab == tabUsage:
 		lines = m.usageLines(w, n)
-	default:
-		lines = []string{line(w, seg{"coming in batch 2", m.st.dim})}
+	case m.tab == tabRouting:
+		lines = m.routingLines(w, n)
+	case m.tab == tabSessions:
+		lines = m.sessionsLines(w, n)
 	}
 	out := make([]string, n)
 	for i := range out {
@@ -106,14 +122,17 @@ func (m *Model) body(w, n int) []string {
 	return out
 }
 
-// statusLine is the line above the hints. It holds the question of an open switch,
-// the progress of a write, the last result, or a cache error, and is blank otherwise.
+// statusLine is the line above the hints. It holds the question on the confirm
+// line, the name being typed for a profile, the progress of a write, the last
+// result, or a cache error, and is blank otherwise.
 func (m *Model) statusLine(w int) string {
 	switch {
-	case m.flow == flowConfirm:
-		return line(w, seg{m.confirmText(), m.st.warn.Bold(true)})
+	case m.ask != nil:
+		return line(w, seg{m.ask.text, m.st.warn.Bold(true)})
+	case m.prof.open && m.prof.naming:
+		return line(w, seg{"Save current setup as: " + clean(m.prof.name) + "▏", m.st.bold})
 	case m.writing:
-		return line(w, seg{"switching…", m.st.warn})
+		return line(w, seg{cmp.Or(m.writeText, "working…"), m.st.warn})
 	case m.notice != "":
 		return line(w, seg{clean(m.notice), m.st.noticeStyle(m.noticeKind)})
 	case m.saveErr != "":
@@ -126,18 +145,36 @@ func (m *Model) statusLine(w int) string {
 func (m *Model) hintLine(w int) string {
 	var text string
 	switch {
+	case m.ask != nil:
+		text = cmp.Or(m.ask.hint, "Enter confirm · Esc cancel")
+	case m.walk.active && m.walk.done:
+		text = "Esc close · q quit"
+	case m.prof.open && m.prof.naming:
+		text = "type a name · Enter continue · Esc back"
+	case m.prof.open:
+		text = "↑↓ choose · Enter apply · S save current · Esc close"
 	case m.flow == flowPick:
 		text = "↑↓ choose · Enter pick · Esc cancel"
-	case m.flow == flowConfirm:
-		text = "Enter confirm · Esc cancel"
 	case m.writing:
-		text = "switching… · Ctrl+C quit"
-	case m.tab == tabAllowances:
-		text = "↑↓ select · Enter switch · r refresh · 1-5 tabs · Tab next · q quit"
-	case m.tab == tabUsage:
-		text = "r refresh · 1-5 tabs · Tab next · q quit"
+		text = "working… · Ctrl+C quit"
+	case m.tab == tabSessions && m.sess.filtering:
+		text = "typing filters · ↑↓ move · Enter open · Ctrl+U clear · Esc done"
 	default:
-		text = "1-5 tabs · Tab next · r refresh · q quit"
+		text = m.tabHints()
 	}
 	return line(w, seg{text, m.st.dim})
+}
+
+// tabHints is the hint line of the current tab, in its normal state.
+func (m *Model) tabHints() string {
+	const common = "p profiles · 1-5 tabs · Tab next · r refresh · q quit"
+	switch m.tab {
+	case tabAgents:
+		return "↑↓ select · " + common
+	case tabAllowances:
+		return "↑↓ select · Enter switch · " + common
+	case tabSessions:
+		return "↑↓ select · Enter open · / filter · p profiles · 1-5 tabs · r refresh · q quit"
+	}
+	return common
 }

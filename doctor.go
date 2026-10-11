@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -70,6 +71,7 @@ func cmdDoctor(ctx context.Context, e env, args []string) error {
 	} else {
 		r.check(false, "gateway", fmt.Sprintf("%s (%s): down: %s", redactURL(gatewayURL), source, health.Err))
 	}
+	doctorGatewayKey(ctx, r, gatewayKeyPath(configPath), gatewayURL, health.Up, &http.Client{})
 
 	// The one magpie CLI call doctor makes. Every call rewrites magpie's
 	// credential file, so it is not repeated for timing.
@@ -163,6 +165,41 @@ func doctorUsageLog(r *reporter, path string, now time.Time) {
 		text += fmt.Sprintf(", %d lines not understood", stats.Skipped)
 	}
 	r.check(true, "usage log", text)
+}
+
+// doctorGatewayKey checks the gateway key the panel reads from keyPath. A missing
+// key is a warning, because the panel then shows no API figures. A key that is
+// there must be a regular file with mode 0600, and the gateway must accept it on
+// GET /api/hello. The output never includes the key itself.
+func doctorGatewayKey(ctx context.Context, r *reporter, keyPath, gatewayURL string, gatewayUp bool, client *http.Client) {
+	fi, err := os.Stat(keyPath)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		r.warn("gateway key", "not set: the panel shows no API figures (see Panel in the README)")
+		return
+	case err != nil:
+		r.check(false, "gateway key", err.Error())
+		return
+	case !fi.Mode().IsRegular():
+		r.check(false, "gateway key", keyPath+" is not a regular file")
+		return
+	case fi.Mode().Perm() != 0o600:
+		r.check(false, "gateway key", fmt.Sprintf("%s has mode %04o, want 0600", keyPath, fi.Mode().Perm()))
+		return
+	case fi.Size() == 0:
+		r.warn("gateway key", keyPath+" is empty: the panel shows no API figures")
+		return
+	case !gatewayUp:
+		r.warn("gateway key", "not checked: the gateway is down")
+		return
+	}
+	api := magpie.APIClient{BaseURL: gatewayURL, KeyFile: keyPath, HTTP: client}
+	name, version, err := api.HelloWithKey(ctx)
+	if err != nil {
+		r.check(false, "gateway key", keyPath+": "+err.Error())
+		return
+	}
+	r.check(true, "gateway key", fmt.Sprintf("%s, mode 0600, accepted by /api/hello (%s %s)", keyPath, name, version))
 }
 
 // reporter prints check lines and counts the failures.

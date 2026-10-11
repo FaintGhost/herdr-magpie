@@ -16,6 +16,9 @@ import (
 const (
 	helloPath = "/api/hello"
 	usagePath = "/v1/magpie/usage"
+	// usagePeriod is the window the panel reads. The gateway's own default is the
+	// last 30 days, so the period must be asked for.
+	usagePeriod = "today"
 	// apiTimeout caps one gateway request.
 	apiTimeout = 5 * time.Second
 	// usageBodyLimit bounds one response. The usage answer lists every session, so it can grow large.
@@ -36,11 +39,30 @@ type APIClient struct {
 // address other than this machine, the gateway answers 401 without a key, and
 // Hello returns that error.
 func (c APIClient) Hello(ctx context.Context) (name, version string, err error) {
+	return c.hello(ctx, "")
+}
+
+// HelloWithKey calls GET /api/hello with the gateway key from KeyFile, which
+// shows whether the gateway accepts that key. A missing or empty key file is an
+// error here, and a key the gateway refuses gives an HTTP 401 error.
+func (c APIClient) HelloWithKey(ctx context.Context) (name, version string, err error) {
+	key, err := readGatewayKey(c.KeyFile)
+	if err != nil {
+		return "", "", err
+	}
+	if key == "" {
+		return "", "", errors.New("gateway key: the key file is empty or missing")
+	}
+	return c.hello(ctx, key)
+}
+
+// hello calls GET /api/hello, sending key as a bearer token when it is not empty.
+func (c APIClient) hello(ctx context.Context, key string) (name, version string, err error) {
 	var body struct {
 		Name    string `json:"name"`
 		Version string `json:"version"`
 	}
-	if err = c.get(ctx, helloPath, "", &body); err != nil {
+	if err = c.get(ctx, helloPath, key, &body); err != nil {
 		return "", "", err
 	}
 	if body.Name != "magpie" {
@@ -49,16 +71,16 @@ func (c APIClient) Hello(ctx context.Context) (name, version string, err error) 
 	return body.Name, body.Version, nil
 }
 
-// Usage calls GET /v1/magpie/usage with the gateway key. Without a period the
-// gateway answers the last 30 days. It returns nil, nil when there is no key
-// file or the file is empty, so the panel shows no API numbers.
+// Usage calls GET /v1/magpie/usage?period=today with the gateway key, so the
+// summary covers the gateway's current day. It returns nil, nil when there is no
+// key file or the file is empty, so the panel shows no API numbers.
 func (c APIClient) Usage(ctx context.Context) (*UsageSummary, error) {
 	key, err := readGatewayKey(c.KeyFile)
 	if err != nil || key == "" {
 		return nil, err
 	}
 	var body usageBody
-	if err := c.get(ctx, usagePath, key, &body); err != nil {
+	if err := c.get(ctx, usagePath+"?period="+usagePeriod, key, &body); err != nil {
 		return nil, err
 	}
 	return body.summary(), nil

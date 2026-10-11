@@ -33,7 +33,7 @@
     "windows": [],
     "readAt": "0001-01-01T00:00:00Z",
     "lastServedAt": "0001-01-01T00:00:00Z",
-    "balance": "",
+    "balance": "$3.00",
     "error": ""
   },
   {
@@ -53,6 +53,6 @@
     "readAt": "0001-01-01T00:00:00Z",
     "lastServedAt": "0001-01-01T00:00:00Z",
     "balance": "",
-    "error": ""
+    "error": "synthetic read failure"
   }
 ]

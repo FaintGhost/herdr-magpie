@@ -82,6 +82,15 @@ func usageLogPath(cfg config) (string, error) {
 	return filepath.Join(root, "magpie", "usage.jsonl"), nil
 }
 
+// gatewayKeyFile is the gateway key's file name, in the plugin config directory
+// beside config.json. The file holds one line and is mode 0600.
+const gatewayKeyFile = "gateway-key"
+
+// gatewayKeyPath returns the gateway key file that goes with the config file at configPath.
+func gatewayKeyPath(configPath string) string {
+	return filepath.Join(filepath.Dir(configPath), gatewayKeyFile)
+}
+
 // loadConfig reads path. A missing file yields the defaults. Unknown fields,
 // trailing data, a body that is not one JSON object, and invalid values are errors.
 func loadConfig(path string) (config, error) {

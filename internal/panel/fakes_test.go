@@ -3,7 +3,6 @@ package panel
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"sync"
 	"testing"
@@ -11,6 +10,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/FaintGhost/herdr-magpie/internal/herdr"
 	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
@@ -28,6 +28,7 @@ type fakeSource struct {
 	profiles []magpie.Profile
 	requests []magpie.Request
 	api      *magpie.UsageSummary
+	sessions []magpie.Session
 
 	errs  map[string]error         // a method name and the error it returns
 	block map[string]chan struct{} // a method name that waits on the channel, ignoring its context
@@ -93,21 +94,89 @@ func (f *fakeSource) APIUsage(context.Context) (*magpie.UsageSummary, error) {
 	return f.api, nil
 }
 
-// fakeActions records the switches it is asked for.
-type fakeActions struct {
-	mu       sync.Mutex
-	switched []string // "agent user", in call order
-	err      error
+func (f *fakeSource) Sessions(context.Context) ([]magpie.Session, error) {
+	if err := f.call("Sessions"); err != nil {
+		return nil, err
+	}
+	return f.sessions, nil
 }
 
-func (a *fakeActions) UseProfile(context.Context, string) error  { return errors.New("not used") }
-func (a *fakeActions) SaveProfile(context.Context, string) error { return errors.New("not used") }
+// fakeActions records the writes it is asked for. A write returns err when it is set,
+// and runs after, when it is set, once it has been recorded.
+type fakeActions struct {
+	mu         sync.Mutex
+	switched   []string // "agent user", in call order
+	used       []string // profile names UseProfile was given
+	saved      []string // profile names SaveProfile was given
+	opened     []magpie.Session
+	restarted  []RestartTarget
+	notice     string // what OpenSession returns as its notice
+	err        error
+	restartErr error         // what RestartPane returns, on top of err
+	after      func()        // runs after each write is recorded, to change the world it reads
+	block      chan struct{} // when set, every write waits on it, ignoring its context
+}
+
+// record notes a write and returns the error it answers with.
+func (a *fakeActions) record(note func()) error {
+	if a.block != nil {
+		<-a.block
+	}
+	a.mu.Lock()
+	note()
+	err, after := a.err, a.after
+	a.mu.Unlock()
+	if after != nil {
+		after()
+	}
+	return err
+}
+
+func (a *fakeActions) UseProfile(_ context.Context, name string) error {
+	return a.record(func() { a.used = append(a.used, name) })
+}
+
+func (a *fakeActions) SaveProfile(_ context.Context, name string) error {
+	return a.record(func() { a.saved = append(a.saved, name) })
+}
 
 func (a *fakeActions) SwitchAccount(_ context.Context, agent, user string) error {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.switched = append(a.switched, agent+" "+user)
-	return a.err
+	return a.record(func() { a.switched = append(a.switched, agent+" "+user) })
+}
+
+func (a *fakeActions) OpenSession(_ context.Context, s magpie.Session) (string, error) {
+	var notice string
+	err := a.record(func() {
+		a.opened = append(a.opened, s)
+		notice = a.notice
+	})
+	return notice, err
+}
+
+func (a *fakeActions) RestartPane(_ context.Context, t RestartTarget) error {
+	err := a.record(func() { a.restarted = append(a.restarted, t) })
+	if err == nil {
+		err = a.restartErr
+	}
+	return err
+}
+
+// fakeHerdr answers the agent list from panes, or with err. It counts its reads.
+type fakeHerdr struct {
+	mu    sync.Mutex
+	panes []herdr.Agent
+	err   error
+	reads int
+}
+
+func (h *fakeHerdr) Agents(context.Context) ([]herdr.Agent, error) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.reads++
+	if h.err != nil {
+		return nil, h.err
+	}
+	return h.panes, nil
 }
 
 // fakeCache keeps files in memory, encoding them as JSON the way state.Store does.
@@ -274,6 +343,10 @@ func keyMsg(k string) tea.KeyMsg {
 		return tea.KeyMsg{Type: tea.KeyShiftTab}
 	case "ctrl+c":
 		return tea.KeyMsg{Type: tea.KeyCtrlC}
+	case "ctrl+u":
+		return tea.KeyMsg{Type: tea.KeyCtrlU}
+	case "backspace":
+		return tea.KeyMsg{Type: tea.KeyBackspace}
 	}
 	return tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune(k)}
 }

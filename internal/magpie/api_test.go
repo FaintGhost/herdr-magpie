@@ -163,3 +163,69 @@ func TestAPIClientNeedsBaseURL(t *testing.T) {
 		t.Error("Usage with no base URL succeeded")
 	}
 }
+
+func TestUsageAsksForToday(t *testing.T) {
+	var mu sync.Mutex
+	var got []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		mu.Lock()
+		got = append(got, req.URL.Path+"?"+req.URL.RawQuery)
+		mu.Unlock()
+		io.WriteString(w, "{}")
+	}))
+	t.Cleanup(srv.Close)
+	c := APIClient{BaseURL: srv.URL, KeyFile: writeKey(t, testKey+"\n"), HTTP: srv.Client()}
+	if _, err := c.Usage(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if want := []string{usagePath + "?period=today"}; !slices.Equal(got, want) {
+		t.Errorf("requests = %q, want %q", got, want)
+	}
+}
+
+func TestHelloWithKeySendsKey(t *testing.T) {
+	srv, log := fakeGateway(t, `{"name":"magpie","version":"0.0.0-test"}`, "{}")
+	c := APIClient{BaseURL: srv.URL, KeyFile: writeKey(t, testKey+"\n"), HTTP: srv.Client()}
+	name, version, err := c.HelloWithKey(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if name != "magpie" || version != "0.0.0-test" {
+		t.Errorf("HelloWithKey() = %q, %q", name, version)
+	}
+	paths, auth := log.seen()
+	if !slices.Equal(paths, []string{helloPath}) || !slices.Equal(auth, []string{"Bearer " + testKey}) {
+		t.Errorf("requests = %q, auth = %q; want one hello call with the key", paths, auth)
+	}
+}
+
+func TestHelloWithKeyNeedsAKey(t *testing.T) {
+	srv, log := fakeGateway(t, `{"name":"magpie","version":"0.0.0-test"}`, "{}")
+	for _, keyFile := range []string{filepath.Join(t.TempDir(), "missing"), writeKey(t, "\n")} {
+		c := APIClient{BaseURL: srv.URL, KeyFile: keyFile, HTTP: srv.Client()}
+		if _, _, err := c.HelloWithKey(t.Context()); err == nil {
+			t.Errorf("HelloWithKey(%s) succeeded without a key", keyFile)
+		}
+	}
+	if paths, _ := log.seen(); len(paths) != 0 {
+		t.Errorf("sent %q without a key", paths)
+	}
+}
+
+func TestHelloWithKeyRefusedErrorOmitsKey(t *testing.T) {
+	const wrong = "not-the-right-key"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		http.Error(w, `{"error":{"message":"bad key"}}`, http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	c := APIClient{BaseURL: srv.URL, KeyFile: writeKey(t, wrong), HTTP: srv.Client()}
+	_, _, err := c.HelloWithKey(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "401") {
+		t.Fatalf("err = %v, want an HTTP 401 error", err)
+	}
+	if strings.Contains(err.Error(), wrong) {
+		t.Errorf("error %q carries the key", err)
+	}
+}

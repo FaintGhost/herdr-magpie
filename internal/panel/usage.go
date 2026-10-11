@@ -67,8 +67,21 @@ func topRows(rows []magpie.UsageRow, n int) []magpie.UsageRow {
 	return sorted[:min(n, len(sorted))]
 }
 
+// ttftP50 is the median time to first token of the requests at or after since, and
+// false when none of them has one. Rows without a time to first token are skipped.
+func ttftP50(reqs []magpie.Request, since time.Time) (time.Duration, bool) {
+	var ms []float64
+	for _, r := range reqs {
+		if r.TTFT > 0 && !r.Time.Before(since) {
+			ms = append(ms, float64(r.TTFT)/float64(time.Millisecond))
+		}
+	}
+	v, ok := percentile(ms, 50)
+	return time.Duration(v * float64(time.Millisecond)), ok
+}
+
 // countsLines draws the request table: a header with the windows 10m, 1h and
-// today, then the requests and the errors in each.
+// today, then the requests, the errors and the median time to first token in each.
 func countsLines(reqs []magpie.Request, now time.Time, w int, st styles) []string {
 	const col = 8
 	windows := [...]struct {
@@ -80,17 +93,24 @@ func countsLines(reqs []magpie.Request, now time.Time, w int, st styles) []strin
 		{"today", todayStart(now)},
 	}
 	label := w - col*len(windows)
-	head, reqRow, errRow := fit("", label), fit("requests", label), fit("errors", label)
+	head, reqRow := fit("", label), fit("requests", label)
+	errRow, ttftRow := fit("errors", label), fit("ttft p50", label)
 	for _, win := range windows {
 		c := countSince(reqs, win.since)
 		head += rjust(win.name, col)
 		reqRow += rjust(strconv.Itoa(c.Requests), col)
 		errRow += rjust(strconv.Itoa(c.Errors), col)
+		ttft := "—"
+		if d, ok := ttftP50(reqs, win.since); ok {
+			ttft = formatTTFT(d)
+		}
+		ttftRow += rjust(ttft, col)
 	}
 	return []string{
 		line(w, seg{head, st.dim}),
 		line(w, seg{reqRow, st.base}),
 		line(w, seg{errRow, st.base}),
+		line(w, seg{ttftRow, st.base}),
 	}
 }
 

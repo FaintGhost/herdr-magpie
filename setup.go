@@ -113,6 +113,13 @@ func setupText(info setupInfo) string {
 	b.WriteString(`command = "faintghost.magpie.open-sessions"` + "\n")
 	b.WriteString(`description = "Open magpie sessions"` + "\n\n")
 
+	b.WriteString("4. Panel (optional). Pick another key if prefix+M is already bound.\n\n")
+	b.WriteString("[[keys.command]]\n")
+	b.WriteString(`key = "prefix+M"` + "\n")
+	b.WriteString(`type = "plugin_action"` + "\n")
+	b.WriteString(`command = "faintghost.magpie.open-panel"` + "\n")
+	b.WriteString(`description = "Open the magpie panel"` + "\n\n")
+
 	b.WriteString("Then run `herdr config check`, and reload the config from Herdr's menu or with\n")
 	b.WriteString("`herdr server reload-config` (a remote client also reloads its local config from the\n")
 	b.WriteString("menu's `reload config`). Gateway and storm notifications need no setup.\n")

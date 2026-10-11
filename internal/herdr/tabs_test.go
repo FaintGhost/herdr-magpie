@@ -142,3 +142,27 @@ func TestFocusCalls(t *testing.T) {
 		wantNoCalls(t, f)
 	})
 }
+
+func TestClosePane(t *testing.T) {
+	t.Run("closes the pane", func(t *testing.T) {
+		c, f := newFake(`{"id":"t","result":{"type":"ok"}}`)
+		if err := c.ClosePane(t.Context(), "w1-2"); err != nil {
+			t.Fatal(err)
+		}
+		wantOneCall(t, f, "pane", "close", "w1-2")
+	})
+	t.Run("refuses a missing or option-like pane without calling herdr", func(t *testing.T) {
+		for _, pane := range []string{"", "--all"} {
+			c, f := newFake("")
+			if err := c.ClosePane(t.Context(), pane); err == nil {
+				t.Errorf("ClosePane(%q) succeeded", pane)
+			}
+			wantNoCalls(t, f)
+		}
+	})
+	t.Run("returns the runner error", func(t *testing.T) {
+		c, f := newFake("")
+		f.err = errors.New("no such pane")
+		checkErr(t, c.ClosePane(t.Context(), "w1-2"), "no such pane")
+	})
+}

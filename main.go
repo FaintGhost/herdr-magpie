@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/FaintGhost/herdr-magpie/internal/herdr"
+	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
 // errUsage marks a command-line mistake (exit 2). errHelp marks a request for
@@ -32,6 +33,7 @@ Commands:
   status      one line for the tab bar: gateway state and error storms
   refresh     recompute storms and session tokens (alias: sync)
   sessions    magpie session launcher; Enter opens or resumes a session
+  panel       magpie panel: agents, allowances, usage, routing and sessions
   setup       print the config snippets to merge into herdr's config.toml
   doctor      check magpie, herdr, the gateway and the CLI calls
   version     print the plugin version
@@ -93,6 +95,8 @@ func run(ctx context.Context, e env, args []string) error {
 		err = cmdRefresh(ctx, e, rest)
 	case "sessions":
 		err = cmdSessions(ctx, e, rest)
+	case "panel":
+		err = cmdPanel(ctx, e, rest)
 	case "setup":
 		err = cmdSetup(ctx, e, rest)
 	case "doctor":
@@ -164,6 +168,15 @@ func (e env) herdrRunner() herdr.Runner {
 	return herdr.ExecRunner{}
 }
 
+// magpieRunner runs the magpie CLI for real, or in dry-run mode prints the magpie
+// writes (use, save, accounts switch) instead. The reads still run.
+func (e env) magpieRunner() magpie.Runner {
+	if e.dryRun {
+		return dryMagpieRunner{out: e.stderr, inner: magpie.ExecRunner{}}
+	}
+	return magpie.ExecRunner{}
+}
+
 // dryRunEnabled reads HERDR_MAGPIE_DRY_RUN. Unset or unparsable means off.
 func dryRunEnabled() bool {
 	on, _ := strconv.ParseBool(os.Getenv("HERDR_MAGPIE_DRY_RUN"))
@@ -183,7 +196,7 @@ func (d dryRunner) Run(ctx context.Context, name string, args ...string) ([]byte
 		return d.inner.Run(ctx, name, args...)
 	}
 	fmt.Fprintf(d.out, "dry-run: would run %s\n", quoteArgv(name, args))
-	return []byte(`{"result":{"root_pane":{"pane_id":"dry-run-pane"}}}`), nil
+	return []byte(`{"result":{"workspace":{"workspace_id":"dry-run-workspace"},"root_pane":{"pane_id":"dry-run-pane"}}}`), nil
 }
 
 // isHerdrRead reports whether args name one of the herdr commands the plugin
@@ -195,6 +208,39 @@ func isHerdrRead(args []string) bool {
 	switch args[0] + " " + args[1] {
 	case "agent list", "agent get", "workspace list":
 		return true
+	}
+	return false
+}
+
+// dryMagpieRunner runs the magpie reads and prints every other call to out instead.
+// A printed write returns no output and no error, so its caller carries on as if
+// it had run.
+type dryMagpieRunner struct {
+	out   io.Writer
+	inner magpie.Runner
+}
+
+// Run implements magpie.Runner.
+func (d dryMagpieRunner) Run(ctx context.Context, name string, args ...string) ([]byte, error) {
+	if isMagpieRead(args) {
+		return d.inner.Run(ctx, name, args...)
+	}
+	fmt.Fprintf(d.out, "dry-run: would run %s\n", quoteArgv(name, args))
+	return nil, nil
+}
+
+// isMagpieRead reports whether args, the arguments after "magpie", name a command
+// that only reads. Anything else counts as a write. The accounts command reads
+// only in its listing form, "accounts" or "accounts --json"; "accounts switch" writes.
+func isMagpieRead(args []string) bool {
+	if len(args) == 0 {
+		return false
+	}
+	switch args[0] {
+	case "ls", "profiles", "models", "quota", "sessions", "usage":
+		return true
+	case "accounts":
+		return len(args) == 1 || (len(args) == 2 && args[1] == "--json")
 	}
 	return false
 }
