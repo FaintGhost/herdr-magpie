@@ -1,0 +1,27 @@
+{
+  "id": "test-tab-create",
+  "result": {
+    "type": "tab_created",
+    "tab": {
+      "agent_status": "unknown",
+      "focused": false,
+      "label": "claude: demo task",
+      "number": 2,
+      "pane_count": 1,
+      "tab_id": "w1-t2",
+      "workspace_id": "w1"
+    },
+    "root_pane": {
+      "agent": null,
+      "agent_session": null,
+      "agent_status": "unknown",
+      "cwd": "/srv/demo/project-a",
+      "focused": false,
+      "pane_id": "w1-3",
+      "revision": 1,
+      "tab_id": "w1-t2",
+      "terminal_id": "t-4",
+      "workspace_id": "w1"
+    }
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "id": "test-workspace-create",
+  "result": {
+    "type": "workspace_created",
+    "workspace": {
+      "active_tab_id": "w3-t1",
+      "agent_status": "unknown",
+      "focused": true,
+      "label": "project-a",
+      "number": 3,
+      "pane_count": 1,
+      "tab_count": 1,
+      "workspace_id": "w3"
+    },
+    "tab": {
+      "agent_status": "unknown",
+      "focused": true,
+      "label": "1",
+      "number": 1,
+      "pane_count": 1,
+      "tab_id": "w3-t1",
+      "workspace_id": "w3"
+    },
+    "root_pane": {
+      "agent": null,
+      "agent_session": null,
+      "agent_status": "unknown",
+      "cwd": "/srv/demo/project-a",
+      "focused": true,
+      "pane_id": "w3-1",
+      "revision": 1,
+      "tab_id": "w3-t1",
+      "terminal_id": "t-9",
+      "workspace_id": "w3"
+    }
+  }
+}

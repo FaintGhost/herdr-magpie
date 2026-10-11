@@ -1,0 +1,65 @@
+[
+  {
+    "agent": "claude",
+    "id": "11111111-2222-4333-8444-555555555555",
+    "cwd": "/work/example-app",
+    "title": "Example session one",
+    "start": "2026-10-10T01:02:03.5Z",
+    "last": "2026-10-11T09:30:00Z",
+    "models": [
+      {"model": "example-model-a", "input": 1200, "output": 3400, "cache_read": 500, "cache_write": 60, "cache_write_1h": 0, "cost": 0.42, "priced": true},
+      {"model": "example-model-b", "input": 10, "output": 20, "cache_read": 0, "cache_write": 0, "cost": 0, "priced": false}
+    ],
+    "input": 1210,
+    "output": 3420,
+    "cache_read": 500,
+    "cache_write": 60,
+    "cache_write_1h": 0,
+    "cost": 0.42,
+    "unpriced": 1,
+    "resume": "cd '/work/example-app' && example-agent --resume 11111111-2222-4333-8444-555555555555",
+    "path": "~/.example/sessions/11111111.jsonl",
+    "transcript": true,
+    "future_field": {"anything": [1, 2, 3]}
+  },
+  {
+    "agent": "omp",
+    "id": "AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE",
+    "cwd": "/work/example-lib",
+    "title": "示例会话",
+    "start": "2026-10-09T12:00:00+08:00",
+    "last": "2026-10-09T13:00:00+08:00",
+    "models": [
+      {"model": "example-model-b", "input": 5, "output": 6, "cache_read": 0, "cache_write": 0, "cost": 0.01, "priced": true}
+    ],
+    "input": 5,
+    "output": 6,
+    "cache_read": 0,
+    "cache_write": 0,
+    "cache_write_1h": 0,
+    "cost": 0.01,
+    "unpriced": 0,
+    "resume": "cd '/work/example-lib' && example-agent --resume AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE",
+    "path": "~/.example/sessions/AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE.jsonl",
+    "transcript": true
+  },
+  {
+    "agent": "claude",
+    "id": "99999999-8888-4777-8666-555555555555",
+    "cwd": "/work/example-empty",
+    "title": "",
+    "start": "",
+    "last": "2026-10-08T00:00:00Z",
+    "models": null,
+    "input": 0,
+    "output": 0,
+    "cache_read": 0,
+    "cache_write": 0,
+    "cache_write_1h": 0,
+    "cost": 0,
+    "unpriced": 0,
+    "resume": "",
+    "path": "",
+    "transcript": false
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "id": "test-agent-get",
+  "result": {
+    "type": "agent_info",
+    "agent": {
+      "agent": "claude",
+      "agent_session": {
+        "agent": "claude",
+        "kind": "id",
+        "source": "herdr:claude",
+        "value": "0a0b0c0d-1111-4222-8333-444455556666"
+      },
+      "agent_status": "idle",
+      "cwd": "/srv/demo/project-a",
+      "focused": false,
+      "foreground_cwd": "/srv/demo/project-a",
+      "pane_id": "w1-1",
+      "revision": 9,
+      "state_change_seq": 4,
+      "tab_id": "w1-t1",
+      "terminal_id": "t-1",
+      "terminal_title": "demo task",
+      "terminal_title_stripped": "demo task",
+      "workspace_id": "w1"
+    }
+  }
+}

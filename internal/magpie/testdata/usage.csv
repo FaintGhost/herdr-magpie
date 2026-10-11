@@ -1,0 +1,10 @@
+request_id,time,agent,session,requested_model,model,served_model,provider,provider_account,swapped,rejected,error,status,cost_usd,error_type,error_message,source,unknown_extra
+req-0001,2026-10-11T09:00:00Z,claude,11111111-2222-4333-8444-555555555555,example-model-a,example-model-a,example-model-a,example-provider,,false,false,false,200,0.012345,,,log,ignored
+req-0002,2026-10-11T09:05:00+08:00,omp,AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE,example-model-a,example-model-b,example-model-b,example-provider,acct-example-1,true,false,false,200,0.5,,,log,ignored
+req-0003,2026-10-11T09:06:00Z,omp,AAAAAAAA-BBBB-4CCC-8DDD-EEEEEEEEEEEE,example-model-b,example-model-b,,example-provider,acct-example-1,false,false,true,400,,example_error_type,"upstream said: ""no, really""",log,ignored
+req-0004,2026-10-11T09:07:00Z,claude,too-few-fields
+
+req-0005,not-a-time,claude,11111111-2222-4333-8444-555555555555,example-model-a,example-model-a,example-model-a,example-provider,,false,false,false,200,0.1,,,log,ignored
+req-0006,2026-10-11T09:08:00Z,claude,11111111-2222-4333-8444-555555555555,example-model-a,example-model-a,example-model-a,example-provider,,maybe,false,false,200,0.1,,,log,ignored
+req-0007,2026-10-11T09:09:00Z,claude,11111111-2222-4333-8444-555555555555,example-model-a,example-model-a,example-model-a,example-provider,,false,false,false,200,0.1,,,log,say "hi" there
+req-0008,2026-10-11T10:00:00Z,claude,11111111-2222-4333-8444-555555555555,example-model-a,example-model-a,example-model-a,example-provider,,false,false,false,200,0.02,,,log,ignored

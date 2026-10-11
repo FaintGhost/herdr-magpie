@@ -1,0 +1,50 @@
+id = "faintghost.magpie"
+name = "Magpie"
+version = "0.1.0"
+min_herdr_version = "0.9.1"
+description = "magpie gateway health, upstream error storms, per-session model and cost, and a session launcher in Herdr"
+platforms = ["linux"]
+
+[[build]]
+command = ["go", "build", "-trimpath", "-ldflags=-s -w", "-o", "bin/herdr-magpie", "."]
+
+[[startup]]
+command = ["./bin/herdr-magpie", "refresh"]
+
+[[events]]
+on = "pane.agent_status_changed"
+command = ["./bin/herdr-magpie", "refresh"]
+
+[[events]]
+on = "pane.agent_detected"
+command = ["./bin/herdr-magpie", "refresh"]
+
+[[actions]]
+id = "refresh"
+title = "Refresh magpie info"
+command = ["./bin/herdr-magpie", "refresh"]
+
+[[actions]]
+id = "open-sessions"
+title = "Open magpie session launcher"
+command = ["sh", "-c", "exec \"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin faintghost.magpie --entrypoint sessions --focus"]
+
+[[panes]]
+id = "sessions"
+title = "magpie sessions"
+placement = "popup"
+width = "80%"
+height = "80%"
+command = ["./bin/herdr-magpie", "sessions"]
+
+[[panes]]
+id = "doctor"
+title = "magpie doctor"
+placement = "overlay"
+command = ["./bin/herdr-magpie", "doctor", "--wait"]
+
+[[panes]]
+id = "setup"
+title = "magpie setup"
+placement = "overlay"
+command = ["./bin/herdr-magpie", "setup", "--wait"]

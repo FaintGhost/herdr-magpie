@@ -1,0 +1,66 @@
+{
+  "id": "test-agent-list",
+  "result": {
+    "type": "agent_list",
+    "agents": [
+      {
+        "agent": "claude",
+        "agent_session": {
+          "agent": "claude",
+          "kind": "id",
+          "source": "herdr:claude",
+          "value": "0a0b0c0d-1111-4222-8333-444455556666"
+        },
+        "agent_status": "working",
+        "cwd": "/srv/demo/project-a",
+        "focused": true,
+        "foreground_cwd": "/srv/demo/project-a",
+        "pane_id": "w1-1",
+        "revision": 7,
+        "state_change_seq": 3,
+        "tab_id": "w1-t1",
+        "terminal_id": "t-1",
+        "terminal_title": "demo task",
+        "terminal_title_stripped": "demo task",
+        "workspace_id": "w1"
+      },
+      {
+        "agent": "omp",
+        "agent_session": {
+          "agent": "omp",
+          "kind": "path",
+          "source": "herdr:omp",
+          "value": "/home/example/.omp/sessions/2026-01-01T00-00-00-000Z_aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee.jsonl"
+        },
+        "agent_status": "idle",
+        "cwd": "/srv/demo/project-b",
+        "focused": false,
+        "foreground_cwd": "/srv/demo/project-b",
+        "pane_id": "w2-1",
+        "revision": 2,
+        "state_change_seq": 1,
+        "tab_id": "w2-t1",
+        "terminal_id": "t-2",
+        "terminal_title": "tidy imports",
+        "terminal_title_stripped": "tidy imports",
+        "workspace_id": "w2"
+      },
+      {
+        "agent": null,
+        "agent_session": null,
+        "agent_status": "unknown",
+        "cwd": "/srv/demo/scratch",
+        "focused": false,
+        "foreground_cwd": null,
+        "pane_id": "w2-2",
+        "revision": 1,
+        "state_change_seq": 0,
+        "tab_id": "w2-t2",
+        "terminal_id": "t-3",
+        "terminal_title": null,
+        "terminal_title_stripped": null,
+        "workspace_id": "w2"
+      }
+    ]
+  }
+}
