@@ -1,0 +1,13 @@
+  示例供应商
+  example/zh-model                                     示例模型 甲  low/high
+  example/plain-model
+  example/effort-only                                  medium/high
+  Routing groups
+  group/auto-example                                   Example Auto  low/high/max
+  3 taken out of example's list on the Agents page
+  example-agent is shown Example One, Example Two
+    magpie provider models example +<model> exposes one
+  Example Vendor: 2 more models in its list, not exposed (not picked): example/x, example/y
+    magpie provider models example-vendor +<model> exposes one
+  example-agent is shown every provider's models · magpie visible example-agent <family>,… narrows it
+  http://192.0.2.10:3425/v1

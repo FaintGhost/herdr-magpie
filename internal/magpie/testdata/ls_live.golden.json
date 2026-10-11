@@ -1,0 +1,98 @@
+[
+  {
+    "Name": "Claude Code",
+    "ID": "claude",
+    "ConfigPath": "~/.claude/settings.json",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "opus"
+      },
+      {
+        "Name": "effort",
+        "Value": "—"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "Codex",
+    "ID": "codex",
+    "ConfigPath": "~/.codex/config.toml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "codex/gpt-6-astra"
+      },
+      {
+        "Name": "effort",
+        "Value": "high"
+      },
+      {
+        "Name": "subagent model",
+        "Value": "codex/gpt-6-astra"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "DeepSeek Harness",
+    "ID": "dsh",
+    "ConfigPath": "~/.dsh/profiles/example/example.patch.yml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "magpie/deepseek/deepseek-flash"
+      },
+      {
+        "Name": "thinking",
+        "Value": "—"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "omp",
+    "ID": "omp",
+    "ConfigPath": "~/.omp/agent/config.yml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "magpie/codex/gpt-6-astra:medium"
+      },
+      {
+        "Name": "thinking",
+        "Value": "high"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "Hermes Agent",
+    "ID": "hermes",
+    "ConfigPath": "~/.hermes/config.yaml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "magpie/deepseek/deepseek-flash"
+      },
+      {
+        "Name": "effort",
+        "Value": "medium"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "Kimi Code",
+    "ID": "kimi",
+    "ConfigPath": "~/.kimi-code/config.toml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "magpie/kimi-code-cn/k3-256k"
+      }
+    ],
+    "Hidden": false
+  }
+]

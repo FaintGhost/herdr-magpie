@@ -1,0 +1,75 @@
+  Routing groups
+  group/auto-deepseek-flash                                          DeepSeek V4.1 Flash  low/high/max
+  group/auto-deepseek-v4-1-flash                                     DeepSeek V4.1 Flash  low/high/max
+  group/auto-glm-5-3                                                 GLM-5.3  low/high/max
+  group/auto-glm-5-3-flash                                           GLM-5.3-Flash  low/high/max
+  DeepSeek
+  deepseek/deepseek-flash                                            DeepSeek V4.1 Flash  low/high/max
+  deepseek/deepseek-v4-pro                                           DeepSeek V4 Pro  low/high/max
+  OpenCode Go
+  opencode-go/deepseek-flash                                         DeepSeek V4.1 Flash  low/high/max
+  MiniMax (China)
+  minimax-cn/MiniMax-M3                                            
+  Kimi Code (China)
+  kimi-code-cn/k3                                                    K3  low/high/max
+  kimi-code-cn/k3-256k                                               K3-256k  low/high/max
+  NVIDIA NIM
+  nvidia/deepseek-ai/deepseek-v4.1-flash                             DeepSeek V4.1 Flash  none/low/high/max
+  nvidia/moonshotai/kimi-k3                                          Kimi K3  low/high/max
+  nvidia/z-ai/glm-5.3                                                GLM-5.3  low/high/max
+  nvidia/z-ai/glm-5.3-flash                                          GLM-5.3-Flash  low/high/max
+  Claude Code
+  claude/claude-sonnet-5-5                                           Claude Sonnet 5.5  low/medium/high/xhigh/max
+  claude/claude-opus-5-5                                             Claude Opus 5.5  low/medium/high/xhigh/max
+  claude/claude-fable-5-1                                            Claude Fable 5.1  low/medium/high/xhigh/max
+  Codex
+  codex/gpt-6.1-sol                                                  GPT-6.1-Sol  low/medium/high/xhigh/max/ultra
+  codex/gpt-6-astra                                                  GPT-6-Astra  low/medium/high/xhigh/max/ultra
+  codex/gpt-6-luna                                                   GPT-6-Luna  low/medium/high/xhigh/max
+  WorkBuddy
+  workbuddy/deepseek-v4.1-flash                                      Deepseek-V4.1-Flash  low/high/max
+  workbuddy/glm-5.3-flash                                            GLM-5.3-Flash  low/high/max
+  workbuddy/glm-5.3                                                  GLM-5.3  low/high/max
+  Our Free Model
+  our-free-model/ling-3.1-flash-free                                 Ling 3 1 Flash Free  light/balanced/deep
+  our-free-model/mimo-v2.6-flash-free                                MiMo V2.6 Flash  light/balanced/deep
+  our-free-model/muse-spark-1.2-contributor-free                     Muse Spark 1.2  light/balanced/deep
+  our-free-model/muse-spark-1.3-contributor-free                     Muse Spark 1.3  light/balanced/deep
+  our-free-model/nemotron-3.5-lightning-free                         Nemotron 3.5 Lightning  light/balanced/deep
+  our-free-model/jev-1.13-free                                       Jev 1.13
+  our-free-model/step-5-preview-free                                 Step 5 Preview Free  light/balanced/deep
+  our-free-model/longcat-2.5-preview-free                            Longcat 2 5 Preview Free  light/balanced/deep
+  our-free-model/space-bunny-free                                    Space Bunny  light/balanced/deep
+  our-free-model/stepfun/step-5-preview-free                         Kilo Step 5 Preview  low/medium/high
+  our-free-model/kilo-auto/free                                      Kilo Auto Free  low/medium/high
+  our-free-model/nvidia/nemotron-3-ultra-550b-a55b:free              Kilo Nemotron 3 Ultra  disabled/low/medium/high
+  our-free-model/dots-studio/dots-3-note-preview:free                Kilo Dots3-Note Preview  disabled/low/medium/high
+  our-free-model/inclusionai/ling-3.1-flash                          Kilo Ling 3.1 Flash  disabled/low/medium/high
+  our-free-model/poolside/laguna-s-2.1:free                          Kilo Laguna S 2.1  disabled/low/medium/high
+  our-free-model/stealth/glyph-cluster                               Kilo Glyph Cluster  disabled/low/medium/high
+  our-free-model/liquid/lfm-2.5-2.6b:free                            Kilo LFM2.5-2.6B  low/medium/high
+  our-free-model/nvidia/nemotron-3.5-lightning:free                  Kilo Nemotron 3.5 Lightning  disabled/low/medium/high
+  our-free-model/thinkingmachines/inkling-small:free                 Kilo Inkling Small  low/medium/high
+  our-free-model/poolside/laguna-xs-2.1:free                         Kilo Laguna XS 2.1  disabled/low/medium/high
+  our-free-model/cohere/north-mini-code:free                         Kilo North Mini Code  disabled/low/medium/high
+  our-free-model/nvidia/nemotron-3.5-content-safety:free             Kilo Nemotron 3.5 Content Safety  disabled/low/medium/high
+  our-free-model/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free  Kilo Nemotron 3 Nano Omni  disabled/low/medium/high
+  our-free-model/nvidia/nemotron-3-super-120b-a12b:free              Kilo Nemotron 3 Super  disabled/low/medium/high
+  claude is shown every provider's models · magpie visible claude <family>,… narrows it
+  OpenCode Go: 36 more models in its list, not exposed (not picked): deepseek-v4-flash, deepseek-v4-flash-vision-exp, deepseek-v4.1-flash, deepseek-v4-pro, glm-5.1, glm-5.2 … 30 more
+    magpie provider models opencode-go +<model> exposes one
+  MiniMax (China): 7 more models in its list, not exposed (not picked): MiniMax-M2.7, MiniMax-M2.7-highspeed, MiniMax-M2.5, MiniMax-M2.5-highspeed, MiniMax-M2.1, MiniMax-M2.1-highspeed … 1 more
+    magpie provider models minimax-cn +<model> exposes one
+  Kimi Code (China): 2 more models in its list, not exposed (not picked): kimi-for-coding, kimi-for-coding-highspeed
+    magpie provider models kimi-code-cn +<model> exposes one
+  NVIDIA NIM: 69 more models in its list, not exposed (not picked): 01-ai/yi-large, adept/fuyu-8b, ai21labs/jamba-1.5-large-instruct, aisingapore/sea-lion-7b-instruct, bigcode/starcoder2-15b, databricks/dbrx-instruct … 63 more
+    magpie provider models nvidia +<model> exposes one
+  Claude Code: 14 more models in its list, not exposed (not picked): claude-haiku-5-5, claude-opus-5, claude-sonnet-5, claude-fable-5, claude-opus-4-8, claude-opus-4-7 … 8 more
+    magpie provider models claude +<model> exposes one
+  Codex: 5 more models in its list, not exposed (not picked): gpt-6-sol, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5
+    magpie provider models codex +<model> exposes one
+  WorkBuddy: 15 more models in its list, not exposed (not picked): auto, hy4-preview, hy3, hy3-x, step-5-preview, space-bunny … 9 more
+    magpie provider models workbuddy +<model> exposes one
+  Our Free Model: 1 more model in its list, not exposed (none picked, so only the first 24): openrouter/free
+    magpie provider models our-free-model +<model> exposes one
+  http://192.0.2.10:3425/v1

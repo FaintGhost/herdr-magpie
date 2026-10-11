@@ -32,6 +32,7 @@ type Request struct {
 	ErrorMessage    string
 	ErrorType       string
 	Source          string
+	TTFT            time.Duration // time to first token; 0 when unknown (usage log ttft_ms)
 }
 
 // UsageStats counts the rows of one usage CSV.

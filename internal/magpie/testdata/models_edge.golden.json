@@ -1,0 +1,40 @@
+[
+  {
+    "ID": "example/zh-model",
+    "DisplayName": "示例模型 甲",
+    "Group": "示例供应商",
+    "Efforts": [
+      "low",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "example/plain-model",
+    "DisplayName": "",
+    "Group": "示例供应商",
+    "Efforts": null,
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "example/effort-only",
+    "DisplayName": "",
+    "Group": "示例供应商",
+    "Efforts": [
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "group/auto-example",
+    "DisplayName": "Example Auto",
+    "Group": "Routing groups",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": true
+  }
+]

@@ -1,0 +1,537 @@
+[
+  {
+    "ID": "group/auto-deepseek-flash",
+    "DisplayName": "DeepSeek V4.1 Flash",
+    "Group": "Routing groups",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": true
+  },
+  {
+    "ID": "group/auto-deepseek-v4-1-flash",
+    "DisplayName": "DeepSeek V4.1 Flash",
+    "Group": "Routing groups",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": true
+  },
+  {
+    "ID": "group/auto-glm-5-3",
+    "DisplayName": "GLM-5.3",
+    "Group": "Routing groups",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": true
+  },
+  {
+    "ID": "group/auto-glm-5-3-flash",
+    "DisplayName": "GLM-5.3-Flash",
+    "Group": "Routing groups",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": true
+  },
+  {
+    "ID": "deepseek/deepseek-flash",
+    "DisplayName": "DeepSeek V4.1 Flash",
+    "Group": "DeepSeek",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "deepseek/deepseek-v4-pro",
+    "DisplayName": "DeepSeek V4 Pro",
+    "Group": "DeepSeek",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "opencode-go/deepseek-flash",
+    "DisplayName": "DeepSeek V4.1 Flash",
+    "Group": "OpenCode Go",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "minimax-cn/MiniMax-M3",
+    "DisplayName": "",
+    "Group": "MiniMax (China)",
+    "Efforts": null,
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "kimi-code-cn/k3",
+    "DisplayName": "K3",
+    "Group": "Kimi Code (China)",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "kimi-code-cn/k3-256k",
+    "DisplayName": "K3-256k",
+    "Group": "Kimi Code (China)",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "nvidia/deepseek-ai/deepseek-v4.1-flash",
+    "DisplayName": "DeepSeek V4.1 Flash",
+    "Group": "NVIDIA NIM",
+    "Efforts": [
+      "none",
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "nvidia/moonshotai/kimi-k3",
+    "DisplayName": "Kimi K3",
+    "Group": "NVIDIA NIM",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "nvidia/z-ai/glm-5.3",
+    "DisplayName": "GLM-5.3",
+    "Group": "NVIDIA NIM",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "nvidia/z-ai/glm-5.3-flash",
+    "DisplayName": "GLM-5.3-Flash",
+    "Group": "NVIDIA NIM",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "claude/claude-sonnet-5-5",
+    "DisplayName": "Claude Sonnet 5.5",
+    "Group": "Claude Code",
+    "Efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "claude/claude-opus-5-5",
+    "DisplayName": "Claude Opus 5.5",
+    "Group": "Claude Code",
+    "Efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "claude/claude-fable-5-1",
+    "DisplayName": "Claude Fable 5.1",
+    "Group": "Claude Code",
+    "Efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "codex/gpt-6.1-sol",
+    "DisplayName": "GPT-6.1-Sol",
+    "Group": "Codex",
+    "Efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "codex/gpt-6-astra",
+    "DisplayName": "GPT-6-Astra",
+    "Group": "Codex",
+    "Efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max",
+      "ultra"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "codex/gpt-6-luna",
+    "DisplayName": "GPT-6-Luna",
+    "Group": "Codex",
+    "Efforts": [
+      "low",
+      "medium",
+      "high",
+      "xhigh",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "workbuddy/deepseek-v4.1-flash",
+    "DisplayName": "Deepseek-V4.1-Flash",
+    "Group": "WorkBuddy",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "workbuddy/glm-5.3-flash",
+    "DisplayName": "GLM-5.3-Flash",
+    "Group": "WorkBuddy",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "workbuddy/glm-5.3",
+    "DisplayName": "GLM-5.3",
+    "Group": "WorkBuddy",
+    "Efforts": [
+      "low",
+      "high",
+      "max"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/ling-3.1-flash-free",
+    "DisplayName": "Ling 3 1 Flash Free",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/mimo-v2.6-flash-free",
+    "DisplayName": "MiMo V2.6 Flash",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/muse-spark-1.2-contributor-free",
+    "DisplayName": "Muse Spark 1.2",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/muse-spark-1.3-contributor-free",
+    "DisplayName": "Muse Spark 1.3",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/nemotron-3.5-lightning-free",
+    "DisplayName": "Nemotron 3.5 Lightning",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/jev-1.13-free",
+    "DisplayName": "Jev 1.13",
+    "Group": "Our Free Model",
+    "Efforts": null,
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/step-5-preview-free",
+    "DisplayName": "Step 5 Preview Free",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/longcat-2.5-preview-free",
+    "DisplayName": "Longcat 2 5 Preview Free",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/space-bunny-free",
+    "DisplayName": "Space Bunny",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "light",
+      "balanced",
+      "deep"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/stepfun/step-5-preview-free",
+    "DisplayName": "Kilo Step 5 Preview",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/kilo-auto/free",
+    "DisplayName": "Kilo Auto Free",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/nvidia/nemotron-3-ultra-550b-a55b:free",
+    "DisplayName": "Kilo Nemotron 3 Ultra",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/dots-studio/dots-3-note-preview:free",
+    "DisplayName": "Kilo Dots3-Note Preview",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/inclusionai/ling-3.1-flash",
+    "DisplayName": "Kilo Ling 3.1 Flash",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/poolside/laguna-s-2.1:free",
+    "DisplayName": "Kilo Laguna S 2.1",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/stealth/glyph-cluster",
+    "DisplayName": "Kilo Glyph Cluster",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/liquid/lfm-2.5-2.6b:free",
+    "DisplayName": "Kilo LFM2.5-2.6B",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/nvidia/nemotron-3.5-lightning:free",
+    "DisplayName": "Kilo Nemotron 3.5 Lightning",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/thinkingmachines/inkling-small:free",
+    "DisplayName": "Kilo Inkling Small",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/poolside/laguna-xs-2.1:free",
+    "DisplayName": "Kilo Laguna XS 2.1",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/cohere/north-mini-code:free",
+    "DisplayName": "Kilo North Mini Code",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/nvidia/nemotron-3.5-content-safety:free",
+    "DisplayName": "Kilo Nemotron 3.5 Content Safety",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+    "DisplayName": "Kilo Nemotron 3 Nano Omni",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  },
+  {
+    "ID": "our-free-model/nvidia/nemotron-3-super-120b-a12b:free",
+    "DisplayName": "Kilo Nemotron 3 Super",
+    "Group": "Our Free Model",
+    "Efforts": [
+      "disabled",
+      "low",
+      "medium",
+      "high"
+    ],
+    "IsRoutingGroup": false
+  }
+]

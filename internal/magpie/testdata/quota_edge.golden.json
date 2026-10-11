@@ -1,0 +1,58 @@
+[
+  {
+    "provider": "example-provider",
+    "name": "Example Pro",
+    "kind": "subscription",
+    "plan": "pro",
+    "user": "person@example.test",
+    "windows": [
+      {
+        "name": "5 hours",
+        "used": 12.5,
+        "remaining": 87.5,
+        "resetsAt": "2026-10-12T12:00:00Z"
+      },
+      {
+        "name": "7 days",
+        "used": 40,
+        "remaining": 60,
+        "resetsAt": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "readAt": "2026-10-12T10:00:00.5+08:00",
+    "lastServedAt": "0001-01-01T00:00:00Z",
+    "balance": "",
+    "error": ""
+  },
+  {
+    "provider": "example-credit",
+    "name": "Example Credit",
+    "kind": "balance",
+    "plan": "",
+    "user": "",
+    "windows": [],
+    "readAt": "0001-01-01T00:00:00Z",
+    "lastServedAt": "0001-01-01T00:00:00Z",
+    "balance": "",
+    "error": ""
+  },
+  {
+    "provider": "example-missing",
+    "name": "No times",
+    "kind": "subscription",
+    "plan": "",
+    "user": "",
+    "windows": [
+      {
+        "name": "1 day",
+        "used": 0,
+        "remaining": 100,
+        "resetsAt": "0001-01-01T00:00:00Z"
+      }
+    ],
+    "readAt": "0001-01-01T00:00:00Z",
+    "lastServedAt": "0001-01-01T00:00:00Z",
+    "balance": "",
+    "error": ""
+  }
+]

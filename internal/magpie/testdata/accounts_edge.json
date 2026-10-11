@@ -1,0 +1,28 @@
+[
+  {
+    "agent": "claude",
+    "user": "person@example.test",
+    "plan": "max",
+    "active": true,
+    "on": true,
+    "windows": [{"name": "5 hours", "used": 3, "remaining": 97, "resetsAt": "2026-10-12T15:00:00Z"}],
+    "readAt": "2026-10-12T10:00:00Z"
+  },
+  {
+    "agent": "codex",
+    "user": "other@example.test",
+    "active": false,
+    "on": false,
+    "windows": [],
+    "readAt": ""
+  },
+  {
+    "agent": "codex",
+    "user": "third@example.test",
+    "plan": "plus",
+    "active": false,
+    "on": true,
+    "lapsed": "sign in again",
+    "windows": null
+  }
+]

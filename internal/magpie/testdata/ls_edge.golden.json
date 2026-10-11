@@ -1,0 +1,116 @@
+[
+  {
+    "Name": "Claude Code",
+    "ID": "claude",
+    "ConfigPath": "~/.example/claude.json",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "opus"
+      },
+      {
+        "Name": "effort",
+        "Value": "—"
+      }
+    ],
+    "Hidden": true
+  },
+  {
+    "Name": "Codex",
+    "ID": "codex",
+    "ConfigPath": "~/.example/codex.toml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "codex/example-gpt"
+      },
+      {
+        "Name": "effort",
+        "Value": "high"
+      },
+      {
+        "Name": "subagent model",
+        "Value": "codex/example-mini"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "omp",
+    "ID": "omp",
+    "ConfigPath": "",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "magpie/example/large:medium"
+      },
+      {
+        "Name": "thinking",
+        "Value": "high"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "Kimi Code",
+    "ID": "kimi",
+    "ConfigPath": "~/.example/kimi.toml",
+    "Fields": null,
+    "Hidden": false
+  },
+  {
+    "Name": "Hermes Agent",
+    "ID": "hermes",
+    "ConfigPath": "~/.example/hermes.yaml",
+    "Fields": null,
+    "Hidden": false
+  },
+  {
+    "Name": "DeepSeek Harness",
+    "ID": "dsh",
+    "ConfigPath": "~/.example/dsh.yml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "—"
+      },
+      {
+        "Name": "thinking",
+        "Value": "—"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "示例代理",
+    "ID": "",
+    "ConfigPath": "~/.example/zh.json",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "example/model-zh"
+      }
+    ],
+    "Hidden": false
+  },
+  {
+    "Name": "Example Agent",
+    "ID": "",
+    "ConfigPath": "~/.example/agent.toml",
+    "Fields": [
+      {
+        "Name": "model",
+        "Value": "example/small"
+      },
+      {
+        "Name": "small model",
+        "Value": "example/tiny"
+      },
+      {
+        "Name": "effort",
+        "Value": "low"
+      }
+    ],
+    "Hidden": false
+  }
+]

@@ -1,0 +1,6 @@
+  Claude Code       opus  ·  effort —                                                       ~/.claude/settings.json
+  Codex             codex/gpt-6-astra  ·  effort high  ·  subagent model codex/gpt-6-astra  ~/.codex/config.toml
+  DeepSeek Harness  magpie/deepseek/deepseek-flash  ·  thinking —                           ~/.dsh/profiles/example/example.patch.yml
+  omp               magpie/codex/gpt-6-astra:medium  ·  thinking high                       ~/.omp/agent/config.yml
+  Hermes Agent      magpie/deepseek/deepseek-flash  ·  effort medium                        ~/.hermes/config.yaml
+  Kimi Code         magpie/kimi-code-cn/k3-256k                                             ~/.kimi-code/config.toml

@@ -1,0 +1,32 @@
+{
+  "Calls": 120,
+  "Cost": 4.25,
+  "Agents": [
+    {
+      "Name": "Claude Code",
+      "Calls": 80,
+      "Errors": 1,
+      "Cost": 3.5
+    },
+    {
+      "Name": "Codex",
+      "Calls": 40,
+      "Errors": 2,
+      "Cost": 0.75
+    }
+  ],
+  "Models": [
+    {
+      "Name": "example-opus",
+      "Calls": 80,
+      "Errors": 1,
+      "Cost": 3.5
+    },
+    {
+      "Name": "codex/example-gpt",
+      "Calls": 40,
+      "Errors": 2,
+      "Cost": 0.75
+    }
+  ]
+}

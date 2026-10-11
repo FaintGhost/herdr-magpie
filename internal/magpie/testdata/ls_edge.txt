@@ -1,0 +1,8 @@
+  Claude Code hidden  opus  ·  effort —                                                ~/.example/claude.json
+  Codex               codex/example-gpt  ·  effort high  ·  subagent model codex/example-mini  ·  not connected · goes through magpie only to fail over  ~/.example/codex.toml
+  omp                 magpie/example/large:medium  ·  thinking high
+  Kimi Code           magpie added                                                     ~/.example/kimi.toml
+  Hermes Agent        magpie hermes add  to add magpie                                 ~/.example/hermes.yaml
+  DeepSeek Harness    —  ·  thinking —                                                 ~/.example/dsh.yml
+  示例代理             example/model-zh                                                 ~/.example/zh.json
+  Example Agent       example/small  ·  small model example/tiny  ·  effort low         ~/.example/agent.toml

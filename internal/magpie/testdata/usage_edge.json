@@ -1,0 +1,17 @@
+{
+  "period": "30d",
+  "path": "",
+  "calls": 120,
+  "errors": 3,
+  "cost": 4.25,
+  "agents": [
+    {"id": "claude", "name": "Claude Code", "icon": "claudecode-color", "calls": 80, "errors": 1, "cost": 3.5, "input": 1000},
+    {"id": "codex", "name": "Codex", "calls": 40, "errors": 2, "cost": 0.75}
+  ],
+  "models": [
+    {"id": "claude/example-opus", "provider": "claude", "model": "claude/example-opus", "name": "example-opus", "sub": "Example", "calls": 80, "errors": 1, "cost": 3.5},
+    {"id": "codex/example-gpt", "provider": "codex", "model": "codex/example-gpt", "name": "", "calls": 40, "errors": 2, "cost": 0.75}
+  ],
+  "sessions": [{"id": "example-session", "calls": 2}],
+  "sessionCount": 1
+}

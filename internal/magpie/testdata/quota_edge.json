@@ -1,0 +1,30 @@
+[
+  {
+    "provider": "example-provider",
+    "name": "Example Pro",
+    "kind": "subscription",
+    "plan": "pro",
+    "user": "person@example.test",
+    "windows": [
+      {"name": "5 hours", "used": 12.5, "remaining": 87.5, "resetsAt": "2026-10-12T12:00:00Z"},
+      {"name": "7 days", "used": 40, "remaining": 60, "resetsAt": ""}
+    ],
+    "readAt": "2026-10-12T10:00:00.5+08:00",
+    "lastServedAt": "",
+    "last": true
+  },
+  {
+    "provider": "example-credit",
+    "name": "Example Credit",
+    "kind": "balance",
+    "balance": "$3.00",
+    "readAt": ""
+  },
+  {
+    "provider": "example-missing",
+    "name": "No times",
+    "kind": "subscription",
+    "error": "synthetic read failure",
+    "windows": [{"name": "1 day", "used": 0, "remaining": 100}]
+  }
+]
