@@ -15,7 +15,7 @@ import (
 
 // screenSizes are the terminals the layout must fit: the minimum, the target,
 // and a few in between and below it.
-var screenSizes = [][2]int{{80, 24}, {120, 32}, {100, 30}, {60, 20}, {40, 12}, {20, 6}, {10, 3}, {1, 1}}
+var screenSizes = [][2]int{{80, 24}, {120, 32}, {137, 36}, {100, 30}, {60, 20}, {58, 20}, {40, 12}, {20, 6}, {10, 3}, {1, 1}}
 
 // wideSource is sampleSource with a Chinese subscription name and account, and a
 // storm table too long for a 24-line screen.

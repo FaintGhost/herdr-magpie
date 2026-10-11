@@ -8,14 +8,30 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
 // costRows is how many agents, and how many models, the cost block lists.
 const costRows = 5
 
+// costSideBySide is the narrowest width at which the agent and model tables sit side
+// by side. Narrower, the model table goes below the agent table, so the names keep
+// their room.
+const costSideBySide = 90
+
+// costNameMax is the most of an agent or model name that the cost tables show.
+const costNameMax = 40
+
+// costNumsW is the width of the calls, errors and cost columns of a cost table, after its name.
+const costNumsW = 23
+
 // stormHeading names the error table and the rule it follows.
 const stormHeading = "Provider errors · last 10m · 400 and 499 are not counted"
+
+// stormGap is the space between the columns of the error table.
+const stormGap = 2
 
 // todayStart is midnight at the start of now's day, in now's location.
 func todayStart(now time.Time) time.Time {
@@ -33,14 +49,16 @@ func usageSince(now time.Time) time.Time {
 	return since
 }
 
-// windowCount is the requests in one time window and how many of them failed.
+// windowCount is the requests in one time window, how many of them failed, and how
+// many of those failures are provider errors.
 type windowCount struct {
-	Requests int
-	Errors   int
+	Requests       int
+	Errors         int // failed: the error is set, or the status is 400 and up
+	ProviderErrors int // failed by the storm rule, which leaves 400 and 499 out
 }
 
-// countSince counts the rows at or after since. A failure is a provider failure
-// by the storm rule, so these counts agree with the error table.
+// countSince counts the rows at or after since. The provider errors follow the storm
+// rule, so they agree with the error table.
 func countSince(reqs []magpie.Request, since time.Time) windowCount {
 	var c windowCount
 	for _, r := range reqs {
@@ -48,8 +66,11 @@ func countSince(reqs []magpie.Request, since time.Time) windowCount {
 			continue
 		}
 		c.Requests++
-		if failed(r) {
+		if isError(r) {
 			c.Errors++
+		}
+		if failed(r) {
+			c.ProviderErrors++
 		}
 	}
 	return c
@@ -80,8 +101,9 @@ func ttftP50(reqs []magpie.Request, since time.Time) (time.Duration, bool) {
 	return time.Duration(v * float64(time.Millisecond)), ok
 }
 
-// countsLines draws the request table: a header with the windows 10m, 1h and
-// today, then the requests, the errors and the median time to first token in each.
+// countsLines draws the request table: a header with the windows 10m, 1h and today,
+// then the requests, all the errors, the provider errors and the median time to first
+// token in each.
 func countsLines(reqs []magpie.Request, now time.Time, w int, st styles) []string {
 	const col = 8
 	windows := [...]struct {
@@ -94,12 +116,14 @@ func countsLines(reqs []magpie.Request, now time.Time, w int, st styles) []strin
 	}
 	label := w - col*len(windows)
 	head, reqRow := fit("", label), fit("requests", label)
-	errRow, ttftRow := fit("errors", label), fit("ttft p50", label)
+	errRow, provRow := fit("errors", label), fit("provider errors", label)
+	ttftRow := fit("ttft p50", label)
 	for _, win := range windows {
 		c := countSince(reqs, win.since)
 		head += rjust(win.name, col)
 		reqRow += rjust(strconv.Itoa(c.Requests), col)
 		errRow += rjust(strconv.Itoa(c.Errors), col)
+		provRow += rjust(strconv.Itoa(c.ProviderErrors), col)
 		ttft := "—"
 		if d, ok := ttftP50(reqs, win.since); ok {
 			ttft = formatTTFT(d)
@@ -110,78 +134,154 @@ func countsLines(reqs []magpie.Request, now time.Time, w int, st styles) []strin
 		line(w, seg{head, st.dim}),
 		line(w, seg{reqRow, st.base}),
 		line(w, seg{errRow, st.base}),
+		line(w, seg{provRow, st.base}),
 		line(w, seg{ttftRow, st.base}),
 	}
 }
 
-// stormLeft lays out the error table's columns, all but the state, in w columns.
-// The agents column takes what is left.
-func stormLeft(w int, provider, status, count, errType, agents string) string {
-	aw := max(w-59, 0)
-	return fit(provider, 16) + " " + fit(status, 4) + " " + rjust(count, 5) + "  " +
-		fit(errType, 18) + "  " + fit(agents, aw) + "  "
+// stormCols is the width of each column of the error table, 0 where a column is left out.
+type stormCols struct {
+	state, provider, status, count, errType, agents int
 }
 
-// stormTable draws the error table. It returns the header lines and the group
-// rows separately, so the rows can give way on a short screen. With no failures,
-// the header is one line saying so and the rows are nil.
+// stormColumns sizes the error table in w cells. The state, the provider, the status
+// and the count stay on a narrow row. The agents go first, then the error type.
+func stormColumns(w int) stormCols {
+	widths := fitColumns(w, stormGap, []column{
+		{min: 8, want: 8},              // state
+		{min: 12, want: 16},            // provider
+		{min: 4, want: 4},              // http status
+		{min: 5, want: 5},              // count
+		{min: 8, want: 18},             // error type
+		{min: 8, want: 24, flex: true}, // agents
+	})
+	return stormCols{state: widths[0], provider: widths[1], status: widths[2], count: widths[3], errType: widths[4], agents: widths[5]}
+}
+
+// stormText is the text of one line of the error table.
+type stormText struct {
+	provider, status, count, errType, agents, state string
+}
+
+// stormLine draws one line of the error table in w columns. The state comes last, in stateStyle.
+func stormLine(w int, cols stormCols, t stormText, style, stateStyle lipgloss.Style) string {
+	return line(w, cellSegs([]cell{
+		{text: t.provider, style: style, width: cols.provider},
+		{text: t.status, style: style, width: cols.status, right: true},
+		{text: t.count, style: style, width: cols.count, right: true},
+		{text: t.errType, style: style, width: cols.errType},
+		{text: t.agents, style: style, width: cols.agents},
+		{text: t.state, style: stateStyle, width: cols.state},
+	}, stormGap, style)...)
+}
+
+// stormTable draws the error table. It returns the header lines and the group rows
+// separately, so the rows can give way on a short screen. With no failures, the header
+// is one line saying so and the rows are nil.
 func stormTable(storms []storm, w int, st styles) (head, rows []string) {
 	if len(storms) == 0 {
 		return []string{line(w, seg{"none in the last 10m", st.dim})}, nil
 	}
-	head = []string{line(w,
-		seg{stormLeft(w, "provider", "http", "count", "error", "agents"), st.dim},
-		seg{fit("state", 8), st.dim},
-	)}
+	cols := stormColumns(w)
+	head = []string{stormLine(w, cols, stormText{
+		provider: "provider", status: "http", count: "count", errType: "error", agents: "agents", state: "state",
+	}, st.dim, st.dim)}
 	for _, s := range storms {
-		state, style := "", st.base
+		state, stateStyle := "", st.base
 		if s.Active {
-			state, style = "ACTIVE", st.bad
+			state, stateStyle = "ACTIVE", st.bad
 		}
-		rows = append(rows, line(w,
-			seg{stormLeft(w, clean(s.Provider), statusCode(s.Status), strconv.Itoa(s.Count),
-				clean(s.ErrorType), clean(strings.Join(s.Agents, ", "))), st.base},
-			seg{fit(state, 8), style},
-		))
+		rows = append(rows, stormLine(w, cols, stormText{
+			provider: clean(s.Provider),
+			status:   statusCode(s.Status),
+			count:    strconv.Itoa(s.Count),
+			errType:  clean(s.ErrorType),
+			agents:   clean(strings.Join(s.Agents, ", ")),
+			state:    state,
+		}, st.base, stateStyle))
 	}
 	return head, rows
 }
 
-// costCols lays out one row of the cost table in colW columns: the name, the
-// calls, the errors and the cost.
-func costCols(colW int, name, calls, errs, cost string) string {
-	return fit(name, max(colW-22, 0)) + rjust(calls, 6) + rjust(errs, 6) + rjust(cost, 10)
+// costLine lays out one line of a cost table: the name in nameW cells, then the calls,
+// the errors and the cost.
+func costLine(nameW int, name, calls, errs, cost string) string {
+	return fit(name, nameW) + rjust(calls, 6) + rjust(errs, 7) + rjust(cost, 10)
 }
 
-// costCell is row i of a cost list, or blank when the list is shorter.
-func costCell(colW int, rows []magpie.UsageRow, i int) string {
+// costHeading is the heading of a cost table: "by agent", or "agent" where the name
+// column is too narrow for the longer one.
+func costHeading(nameW int, kind string) string {
+	if h := "by " + kind; nameW >= displayWidth(h) {
+		return h
+	}
+	return kind
+}
+
+// costRow is row i of a cost list, or blank when the list is shorter.
+func costRow(nameW int, rows []magpie.UsageRow, i int) string {
 	if i >= len(rows) {
-		return fit("", colW)
+		return strings.Repeat(" ", nameW+costNumsW)
 	}
 	r := rows[i]
-	return costCols(colW, clean(r.Name), strconv.Itoa(r.Calls), strconv.Itoa(r.Errors), formatCost(r.Cost))
+	return costLine(nameW, clean(r.Name), strconv.Itoa(r.Calls), strconv.Itoa(r.Errors), formatCost(r.Cost))
 }
 
-// costLines draws the gateway cost for today: the total, then the costliest agents
-// and models side by side.
-func costLines(s magpie.UsageSummary, w int, st styles) []string {
-	colW := max((w-3)/2, 0)
+// splitRows gives the agent and the model tables their rows within n lines, taking
+// rows from the longer table first.
+func splitRows(a, b, n int) (int, int) {
+	n = max(n, 0)
+	for a+b > n {
+		if a >= b {
+			a--
+		} else {
+			b--
+		}
+	}
+	return a, b
+}
+
+// costLines draws the gateway cost for today, in h lines at most: the total, then the
+// costliest agents and models. From costSideBySide columns on, the two tables sit side
+// by side. Narrower, the model table goes below the agent table. Rows that do not fit
+// are left out.
+func costLines(s magpie.UsageSummary, w, h int, st styles) []string {
+	if h <= 0 {
+		return nil
+	}
 	out := []string{
 		line(w, seg{"Gateway cost · today", st.bold}),
 		line(w, seg{fmt.Sprintf("%d calls · %s", s.Calls, formatCost(s.Cost)), st.base}),
-		line(w, seg{costCols(colW, "by agent", "calls", "err", "cost") + "   " +
-			costCols(colW, "by model", "calls", "err", "cost"), st.dim}),
 	}
 	agents, models := topRows(s.Agents, costRows), topRows(s.Models, costRows)
-	for i := range max(len(agents), len(models)) {
-		out = append(out, line(w, seg{costCell(colW, agents, i) + "   " + costCell(colW, models, i), st.base}))
+	if w >= costSideBySide {
+		colW := (w - 3) / 2
+		nameW := min(colW-costNumsW, costNameMax)
+		head := fit(costLine(nameW, costHeading(nameW, "agent"), "calls", "errors", "cost"), colW) + "   " +
+			costLine(nameW, costHeading(nameW, "model"), "calls", "errors", "cost")
+		out = append(out, line(w, seg{head, st.dim}))
+		for i := range min(max(h-len(out), 0), max(len(agents), len(models))) {
+			out = append(out, line(w, seg{fit(costRow(nameW, agents, i), colW) + "   " + costRow(nameW, models, i), st.base}))
+		}
+		return out[:min(len(out), h)]
 	}
-	return out
+
+	nameW := min(w-costNumsW, costNameMax)
+	out = append(out, line(w, seg{costLine(nameW, costHeading(nameW, "agent"), "calls", "errors", "cost"), st.dim}))
+	na, nm := splitRows(len(agents), len(models), h-len(out)-1) // one line is left for the model heading
+	for i := range na {
+		out = append(out, line(w, seg{costRow(nameW, agents, i), st.base}))
+	}
+	out = append(out, line(w, seg{costLine(nameW, costHeading(nameW, "model"), "calls", "errors", "cost"), st.dim}))
+	for i := range nm {
+		out = append(out, line(w, seg{costRow(nameW, models, i), st.base}))
+	}
+	return out[:min(len(out), h)]
 }
 
-// usageLines draws the Usage tab in h lines: the request counts, the provider
-// errors of the last ten minutes, then the gateway cost. On a short screen the
-// error rows give way first.
+// usageLines draws the Usage tab in h lines: the request counts, the provider errors of
+// the last ten minutes, then the gateway cost. On a short screen the error rows give way
+// first, and the cost rows after them.
 func (m *Model) usageLines(w, h int) []string {
 	st, now := m.st, m.now()
 	var top []string
@@ -199,13 +299,14 @@ func (m *Model) usageLines(w, h int) []string {
 	top = append(top, line(w))
 
 	tableHead, rows := stormTable(computeStorms(m.snap.Requests.Data, now), w, st)
-	cost := m.costBlock(w)
-	room := h - (len(top) + 1 + len(tableHead) + 1 + len(cost))
-	if len(rows) > room {
-		if room <= 0 {
+	room := h - (len(top) + 1 + len(tableHead) + 1) // the heading, and the blank line before the cost
+	cost := m.costBlock(w, room)
+	rowRoom := room - len(cost)
+	if len(rows) > rowRoom {
+		if rowRoom <= 0 {
 			rows = nil
 		} else {
-			keep := room - 1
+			keep := rowRoom - 1
 			rows = append(rows[:keep:keep], line(w, seg{fmt.Sprintf("+%d more", len(rows)-keep), st.dim}))
 		}
 	}
@@ -219,9 +320,9 @@ func (m *Model) usageLines(w, h int) []string {
 	return append(out, cost...)
 }
 
-// costBlock is the cost part of the Usage tab. While it loads, or when there is
-// no gateway key, it is one note; otherwise it is the table.
-func (m *Model) costBlock(w int) []string {
+// costBlock is the cost part of the Usage tab, in h lines at most. While it loads, or
+// when there is no gateway key, it is one note; otherwise it is the cost table.
+func (m *Model) costBlock(w, h int) []string {
 	st := m.st
 	var out []string
 	if e := m.feeds[feedAPIUsage].err; e != "" {
@@ -232,11 +333,11 @@ func (m *Model) costBlock(w int) []string {
 	case api.At.IsZero():
 		text := "no cost data yet"
 		if m.loading(feedAPIUsage) {
-			text = "loading cost…"
+			text = "loading…"
 		}
 		return append(out, line(w, seg{text, st.dim}))
 	case api.Data == nil:
 		return append(out, line(w, seg{"no gateway key — cost hidden", st.dim}))
 	}
-	return append(out, costLines(*api.Data, w, st)...)
+	return append(out, costLines(*api.Data, w, h-len(out), st)...)
 }

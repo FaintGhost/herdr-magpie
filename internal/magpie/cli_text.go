@@ -17,12 +17,12 @@ var ErrUnrecognized = errors.New("unrecognized magpie output")
 // pipe gets plain text, but a forced-colour environment would add them.
 var ansiEscape = regexp.MustCompile(`\x1b\[[0-9;?]*[ -/]*[@-~]`)
 
-// runCLI runs the magpie CLI with args under the magpie timeout. An empty bin means "magpie".
+// runCLI runs the magpie CLI with args under the call's cap (see cliCap). An empty bin means "magpie".
 func runCLI(ctx context.Context, r Runner, bin string, args ...string) ([]byte, error) {
 	if bin == "" {
 		bin = "magpie"
 	}
-	ctx, cancel := context.WithTimeout(ctx, magpieTimeout)
+	ctx, cancel := context.WithTimeout(ctx, cliCap(ctx))
 	defer cancel()
 	return r.Run(ctx, bin, args...)
 }

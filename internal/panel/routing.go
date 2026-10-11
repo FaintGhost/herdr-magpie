@@ -7,13 +7,20 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
-
 	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
 // routingRows is how many recent gateway requests the Routing tab lists.
 const routingRows = 50
+
+// Columns of the routing table, in cells. The route takes what the other columns
+// leave, but is not cut below routeRouteMin: a narrower table drops columns instead.
+const (
+	routeGap      = 2
+	routeAgentMax = 14 // "Go-http-client", the longest agent name the gateway logs
+	routeProvMax  = 12
+	routeRouteMin = 24
+)
 
 // swapped reports whether the gateway served r from another model than the one
 // asked for. The usage log's swapped flag counts too.
@@ -82,83 +89,58 @@ func formatTTFT(d time.Duration) string {
 	return fmt.Sprintf("%.1fs", d.Seconds())
 }
 
-// routeColumns says which optional columns of the routing table fit in w columns.
-// The route takes what the other columns leave, so the optional ones go first.
-func routeColumns(w int) (agent, provider bool) {
-	switch {
-	case w >= 72:
-		return true, true
-	case w >= 56:
-		return true, false
-	}
-	return false, false
+// routeCols is the width of each column of the routing table, 0 where a column is left out.
+type routeCols struct {
+	time, agent, route, provider, status, ttft int
 }
 
-// routeCells are the texts of one routing table line, each with its style.
-type routeCells struct {
-	time, agent, route, provider, status, ttft seg
-	gap                                        lipgloss.Style
+// routeAgentText is the agent column's text for r.
+func routeAgentText(r magpie.Request) string {
+	return cmp.Or(clean(r.Agent), "—")
 }
 
-// routeLine draws one routing table line in exactly w columns. The columns are
-// time, agent, route, provider, http status and time to first token, two spaces
-// apart. The agent and provider columns are left out where showAgent and
-// showProvider are false. The route fills what the other columns leave.
-func routeLine(w int, showAgent, showProvider bool, c routeCells) string {
-	type col struct {
-		seg
-		width int // 0 for the route, which takes the rest
-		right bool
-	}
-	cols := []col{{seg: c.time, width: 8}}
-	if showAgent {
-		cols = append(cols, col{seg: c.agent, width: 10})
-	}
-	cols = append(cols, col{seg: c.route})
-	if showProvider {
-		cols = append(cols, col{seg: c.provider, width: 12})
-	}
-	cols = append(cols, col{seg: c.status, width: 4, right: true}, col{seg: c.ttft, width: 7, right: true})
+// routeProviderText is the provider column's text for r: its provider, or else its host.
+func routeProviderText(r magpie.Request) string {
+	return cmp.Or(clean(r.Provider), clean(r.Host), "—")
+}
 
-	fixed := 2 * (len(cols) - 1)
-	for _, k := range cols {
-		fixed += k.width
+// routeColumns sizes the routing table in w cells, for the rows it lists. The columns
+// come in priority order: the time, the route and the status first, then the agent,
+// the provider and the time to first token. A narrow table drops the time to first
+// token first, and then the provider.
+func routeColumns(w int, rows []magpie.Request) routeCols {
+	agent, provider := displayWidth("agent"), displayWidth("provider")
+	for _, r := range rows {
+		agent = max(agent, displayWidth(routeAgentText(r)))
+		provider = max(provider, displayWidth(routeProviderText(r)))
 	}
-	routeW := max(w-fixed, 0)
-	var segs []seg
-	for i, k := range cols {
-		if i > 0 {
-			segs = append(segs, seg{"  ", c.gap})
-		}
-		width := k.width
-		if width == 0 {
-			width = routeW
-		}
-		text := fit(k.text, width)
-		if k.right {
-			text = rjust(k.text, width)
-		}
-		segs = append(segs, seg{text, k.style})
-	}
-	return line(w, segs...)
+	agent, provider = min(agent, routeAgentMax), min(provider, routeProvMax)
+	widths := fitColumns(w, routeGap, []column{
+		{min: 8, want: 8},
+		{min: routeRouteMin, want: routeRouteMin, flex: true},
+		{min: 4, want: 4},
+		{min: agent, want: agent},
+		{min: provider, want: provider},
+		{min: 7, want: 7},
+	})
+	return routeCols{time: widths[0], route: widths[1], status: widths[2], agent: widths[3], provider: widths[4], ttft: widths[5]}
 }
 
 // routeHeader is the routing table's header line.
-func routeHeader(w int, showAgent, showProvider bool, st styles) string {
-	return routeLine(w, showAgent, showProvider, routeCells{
-		time:     seg{"time", st.dim},
-		agent:    seg{"agent", st.dim},
-		route:    seg{"requested → served", st.dim},
-		provider: seg{"provider", st.dim},
-		status:   seg{"http", st.dim},
-		ttft:     seg{"ttft", st.dim},
-		gap:      st.dim,
-	})
+func routeHeader(w int, cols routeCols, st styles) string {
+	return line(w, cellSegs([]cell{
+		{text: "time", style: st.dim, width: cols.time},
+		{text: "agent", style: st.dim, width: cols.agent},
+		{text: "requested → served", style: st.dim, width: cols.route},
+		{text: "provider", style: st.dim, width: cols.provider},
+		{text: "http", style: st.dim, width: cols.status, right: true},
+		{text: "ttft", style: st.dim, width: cols.ttft, right: true},
+	}, routeGap, st.dim)...)
 }
 
 // routeRow is the routing table's line for one request. A swapped request has its
 // route highlighted, and a failed one has its status in red.
-func routeRow(r magpie.Request, w int, showAgent, showProvider bool, st styles) string {
+func routeRow(r magpie.Request, w int, cols routeCols, st styles) string {
 	route := cmp.Or(clean(r.RequestedModel), "—")
 	routeStyle := st.base
 	if swapped(r) {
@@ -169,15 +151,14 @@ func routeRow(r magpie.Request, w int, showAgent, showProvider bool, st styles) 
 	if isError(r) {
 		statusStyle = st.bad
 	}
-	return routeLine(w, showAgent, showProvider, routeCells{
-		time:     seg{r.Time.Local().Format("15:04:05"), st.base},
-		agent:    seg{cmp.Or(clean(r.Agent), "—"), st.base},
-		route:    seg{route, routeStyle},
-		provider: seg{cmp.Or(clean(r.Provider), clean(r.Host), "—"), st.base},
-		status:   seg{statusCode(r.Status), statusStyle},
-		ttft:     seg{formatTTFT(r.TTFT), st.base},
-		gap:      st.base,
-	})
+	return line(w, cellSegs([]cell{
+		{text: r.Time.Local().Format("15:04:05"), style: st.base, width: cols.time},
+		{text: routeAgentText(r), style: st.base, width: cols.agent},
+		{text: route, style: routeStyle, width: cols.route},
+		{text: routeProviderText(r), style: st.base, width: cols.provider},
+		{text: statusCode(r.Status), style: statusStyle, width: cols.status, right: true},
+		{text: formatTTFT(r.TTFT), style: st.base, width: cols.ttft, right: true},
+	}, routeGap, st.base)...)
 }
 
 // routingLines draws the Routing tab in h lines: the summary, the header, then the
@@ -196,10 +177,10 @@ func (m *Model) routingLines(w, h int) []string {
 		return append(out, line(w, seg{"no usage data yet; press r to refresh", st.dim}))
 	}
 	out = append(out, line(w, seg{routingSummary(reqs, now), st.bold}))
-	showAgent, showProvider := routeColumns(w)
-	out = append(out, routeHeader(w, showAgent, showProvider, st))
-
 	rows := recentGateway(reqs, routingRows)
+	cols := routeColumns(w, rows)
+	out = append(out, routeHeader(w, cols, st))
+
 	room := h - len(out)
 	switch {
 	case room <= 0:
@@ -213,7 +194,7 @@ func (m *Model) routingLines(w, h int) []string {
 		shown = min(len(rows), room-1) // the last line says how many are left out
 	}
 	for _, r := range rows[:shown] {
-		out = append(out, routeRow(r, w, showAgent, showProvider, st))
+		out = append(out, routeRow(r, w, cols, st))
 	}
 	if more {
 		out = append(out, line(w, seg{fmt.Sprintf("+%d older", len(rows)-shown), st.dim}))

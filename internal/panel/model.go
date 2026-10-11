@@ -65,15 +65,16 @@ const (
 
 // Model is the panel's bubbletea model. NewModel builds it and Run drives it.
 type Model struct {
-	ctx   context.Context
-	src   Source
-	act   Actions
-	herdr HerdrView
-	cache CacheStore
-	now   func() time.Time
-	home  string // the user's home directory, for "~" in paths and filters
-	st    styles
-	live  bool // set by Run: ticks keep the ages and countdowns current
+	dryRun bool // Deps.DryRun
+	ctx    context.Context
+	src    Source
+	act    Actions
+	herdr  HerdrView
+	cache  CacheStore
+	now    func() time.Time
+	home   string // the user's home directory, for "~" in paths and filters
+	st     styles
+	live   bool // set by Run: ticks keep the ages and countdowns current
 
 	width, height int
 	tab           tab
@@ -124,6 +125,7 @@ func newModel(ctx context.Context, d Deps, r *lipgloss.Renderer) *Model {
 		act:        d.Actions,
 		herdr:      d.Herdr,
 		cache:      d.Cache,
+		dryRun:     d.DryRun,
 		now:        d.Now,
 		home:       home,
 		st:         newStyles(r),
@@ -535,5 +537,8 @@ func (m *Model) tabUsesPanes() bool {
 
 // setNotice sets the status line's text and colour. An empty text clears it.
 func (m *Model) setNotice(k noticeKind, text string) {
+	if m.dryRun && k == noticeOK {
+		text = "[dry-run] " + text
+	}
 	m.notice, m.noticeKind = text, k
 }

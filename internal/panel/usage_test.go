@@ -2,6 +2,7 @@ package panel
 
 import (
 	"io"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -35,9 +36,9 @@ func TestCountSince(t *testing.T) {
 		since time.Time
 		want  windowCount
 	}{
-		{name: "ten minutes: five 429s, a 200 and a 400 (not a failure)", since: testNow.Add(-stormWindow), want: windowCount{Requests: 7, Errors: 5}},
-		{name: "an hour adds the 402", since: testNow.Add(-time.Hour), want: windowCount{Requests: 8, Errors: 6}},
-		{name: "today adds the 90-minute-old 200 and leaves out the 30-hour-old 500", since: todayStart(testNow), want: windowCount{Requests: 9, Errors: 6}},
+		{name: "ten minutes: five 429s, a 200 and a 400 (an error, not a provider error)", since: testNow.Add(-stormWindow), want: windowCount{Requests: 7, Errors: 6, ProviderErrors: 5}},
+		{name: "an hour adds the 402", since: testNow.Add(-time.Hour), want: windowCount{Requests: 8, Errors: 7, ProviderErrors: 6}},
+		{name: "today adds the 90-minute-old 200 and leaves out the 30-hour-old 500", since: todayStart(testNow), want: windowCount{Requests: 9, Errors: 7, ProviderErrors: 6}},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -93,21 +94,21 @@ func TestCostBlock(t *testing.T) {
 	src := sampleSource()
 	t.Run("never read", func(t *testing.T) {
 		m := testModel(t, Deps{Source: src})
-		if got := strings.Join(m.costBlock(80), "\n"); !strings.Contains(got, "no cost data yet") {
+		if got := strings.Join(m.costBlock(80, 40), "\n"); !strings.Contains(got, "no cost data yet") {
 			t.Errorf("cost block = %q", got)
 		}
 	})
 	t.Run("no gateway key", func(t *testing.T) {
 		m := testModel(t, Deps{Source: src})
 		m.snap.APIUsage = stampAt[*magpie.UsageSummary](testNow, nil)
-		if got := strings.Join(m.costBlock(80), "\n"); !strings.Contains(got, "no gateway key — cost hidden") {
+		if got := strings.Join(m.costBlock(80, 40), "\n"); !strings.Contains(got, "no gateway key — cost hidden") {
 			t.Errorf("cost block = %q", got)
 		}
 	})
 	t.Run("with key", func(t *testing.T) {
 		m := testModel(t, Deps{Source: src})
 		m.snap.APIUsage = stampAt(testNow, src.api)
-		got := strings.Join(m.costBlock(80), "\n")
+		got := strings.Join(m.costBlock(80, 40), "\n")
 		for _, want := range []string{"Gateway cost · today", "412 calls · $3.12", "by agent", "by model", "omp", "claude-sonnet"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("cost block lacks %q:\n%s", want, got)
@@ -118,7 +119,7 @@ func TestCostBlock(t *testing.T) {
 		m := testModel(t, Deps{Source: src})
 		m.snap.APIUsage = stampAt(testNow, src.api)
 		m.feeds[feedAPIUsage] = feedState{err: "gateway down", fromCache: true}
-		got := strings.Join(m.costBlock(80), "\n")
+		got := strings.Join(m.costBlock(80, 40), "\n")
 		if !strings.Contains(got, "api usage: gateway down") || !strings.Contains(got, "412 calls") {
 			t.Errorf("cost block = %q", got)
 		}
@@ -161,6 +162,65 @@ func TestTTFTP50IsTheMedianOfTheWindow(t *testing.T) {
 	if _, ok := ttftP50(nil, testNow.Add(-time.Hour)); ok {
 		t.Error("no requests should have no median")
 	}
+}
+
+func TestCountsLinesShowAllErrorsAndTheProviderErrors(t *testing.T) {
+	st := newStyles(newRenderer(io.Discard, false))
+	lines := countsLines(sampleRequests(testNow), testNow, 60, st)
+	if got := strings.Fields(lines[2]); !slices.Equal(got, []string{"errors", "6", "7", "7"}) {
+		t.Errorf("errors row = %q, want all failures in 10m, 1h and today", got)
+	}
+	if got := strings.Fields(lines[3]); !slices.Equal(got, []string{"provider", "errors", "5", "6", "6"}) {
+		t.Errorf("provider errors row = %q, want the storm rule's count", got)
+	}
+}
+
+func TestCostBlockStacksTheModelTableBelowNinetyColumns(t *testing.T) {
+	src := sampleSource()
+	m := testModel(t, Deps{Source: src})
+	m.snap.APIUsage = stampAt(testNow, src.api)
+
+	narrow := strings.Split(strings.Join(m.costBlock(80, 40), "\n"), "\n")
+	if agent, model := lineWith(narrow, "by agent"), lineWith(narrow, "by model"); agent < 0 || model <= agent {
+		t.Errorf("at 80 columns the model table should follow the agent table: agent line %d, model line %d", agent, model)
+	}
+	wide := strings.Split(strings.Join(m.costBlock(120, 40), "\n"), "\n")
+	if agent, model := lineWith(wide, "by agent"), lineWith(wide, "by model"); agent < 0 || agent != model {
+		t.Errorf("at 120 columns the tables should share a line: agent line %d, model line %d", agent, model)
+	}
+}
+
+func TestCostBlockHeadingsStayWholeAtFiftyEightColumns(t *testing.T) {
+	src := sampleSource()
+	m := testModel(t, Deps{Source: src})
+	m.snap.APIUsage = stampAt(testNow, src.api)
+	got := strings.Join(m.costBlock(58, 40), "\n")
+	for _, want := range []string{"by agent", "by model", "errors", "claude-sonnet", "deepseek-chat"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("58-column cost block lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "by a…") || strings.Contains(got, "by m…") {
+		t.Errorf("58-column headings are cut:\n%s", got)
+	}
+}
+
+func TestCostBlockSaysLoadingWhileItReads(t *testing.T) {
+	m := testModel(t, Deps{Source: sampleSource()})
+	m.feeds[feedAPIUsage].pending = true
+	if got := strings.Join(m.costBlock(80, 40), "\n"); !strings.Contains(got, "loading…") {
+		t.Errorf("cost block while loading = %q", got)
+	}
+}
+
+// lineWith is the index of the first line that contains s, or -1.
+func lineWith(lines []string, s string) int {
+	for i, l := range lines {
+		if strings.Contains(l, s) {
+			return i
+		}
+	}
+	return -1
 }
 
 func TestUsageShowsTheTTFTRow(t *testing.T) {

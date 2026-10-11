@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	helloPath = "/api/hello"
-	usagePath = "/v1/magpie/usage"
+	helloPath  = "/api/hello"
+	usagePath  = "/v1/magpie/usage"
+	quotasPath = "/v1/magpie/quotas"
 	// usagePeriod is the window the panel reads. The gateway's own default is the
 	// last 30 days, so the period must be asked for.
 	usagePeriod = "today"
@@ -25,14 +26,17 @@ const (
 	usageBodyLimit = 64 << 20
 )
 
-// APIClient reads the gateway. It calls only GET /api/hello and GET
-// /v1/magpie/usage. The gateway key is read from KeyFile on each call, sent only
-// as an Authorization header, and never logged or put in an error.
+// APIClient reads the gateway. It calls only GET /api/hello, GET /v1/magpie/usage
+// and GET /v1/magpie/quotas. The gateway key is read from KeyFile on each call,
+// sent only as an Authorization header, and never logged or put in an error.
 type APIClient struct {
 	BaseURL string       // the gateway's base URL, as Discover returns it
 	KeyFile string       // the gateway key file: one line, mode 0600
 	HTTP    *http.Client // nil means http.DefaultClient
 }
+
+// errNoGatewayKey says that the key file is missing or empty, so no key can be sent.
+var errNoGatewayKey = errors.New("gateway key: the key file is empty or missing")
 
 // Hello calls GET /api/hello, which takes no key, and returns the name and version
 // magpie reports. An answer that does not name magpie is an error. From an
@@ -51,7 +55,7 @@ func (c APIClient) HelloWithKey(ctx context.Context) (name, version string, err 
 		return "", "", err
 	}
 	if key == "" {
-		return "", "", errors.New("gateway key: the key file is empty or missing")
+		return "", "", errNoGatewayKey
 	}
 	return c.hello(ctx, key)
 }
@@ -84,6 +88,30 @@ func (c APIClient) Usage(ctx context.Context) (*UsageSummary, error) {
 		return nil, err
 	}
 	return body.summary(), nil
+}
+
+// Quotas calls GET /v1/magpie/quotas with the gateway key and returns the allowances
+// it lists, as `magpie quota --json` does. Without a key it is an error, not an
+// empty answer, so the caller can fall back to the CLI.
+func (c APIClient) Quotas(ctx context.Context) ([]Quota, error) {
+	key, err := readGatewayKey(c.KeyFile)
+	if err != nil {
+		return nil, err
+	}
+	if key == "" {
+		return nil, errNoGatewayKey
+	}
+	var body struct {
+		Data []rawQuota `json:"data"`
+	}
+	if err := c.get(ctx, quotasPath, key, &body); err != nil {
+		return nil, err
+	}
+	quotas := make([]Quota, 0, len(body.Data))
+	for _, q := range body.Data {
+		quotas = append(quotas, q.quota())
+	}
+	return quotas, nil
 }
 
 // get sends GET base+path, with key as a bearer token when it is not empty, and

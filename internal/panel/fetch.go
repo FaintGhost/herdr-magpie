@@ -20,8 +20,10 @@ const (
 )
 
 var (
-	// fetchTimeout bounds each Source method. It is a variable so tests can shorten it.
-	fetchTimeout = 6 * time.Second
+	// fetchTimeout bounds each Source method. A gateway read gives up after 5 s and then
+	// falls back to a magpie CLI read capped at 20 s, so 25 s covers both. It is a
+	// variable so tests can shorten it.
+	fetchTimeout = 25 * time.Second
 
 	errTimeout = errors.New("timed out")
 )

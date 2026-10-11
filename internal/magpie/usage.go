@@ -52,7 +52,7 @@ func Usage(ctx context.Context, r Runner, bin, window string) ([]Request, UsageS
 	if bin == "" {
 		bin = "magpie"
 	}
-	ctx, cancel := context.WithTimeout(ctx, magpieTimeout)
+	ctx, cancel := context.WithTimeout(ctx, cliCap(ctx))
 	defer cancel()
 	out, err := r.Run(ctx, bin, "usage", "--csv", window)
 	if err != nil {

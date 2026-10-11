@@ -94,7 +94,7 @@ func sessionsSince(ctx context.Context, r Runner, bin string, days int, now time
 	if bin == "" {
 		bin = "magpie"
 	}
-	ctx, cancel := context.WithTimeout(ctx, magpieTimeout)
+	ctx, cancel := context.WithTimeout(ctx, cliCap(ctx))
 	defer cancel()
 	out, err := r.Run(ctx, bin, "sessions", "--json", "--limit", strconv.Itoa(sessionsLimit))
 	if err != nil {

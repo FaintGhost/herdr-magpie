@@ -72,6 +72,7 @@ func cmdPanel(ctx context.Context, e env, args []string) error {
 		Out:        e.stdout,
 		StartTab:   *startTab,
 		FocusAgent: focusedPaneAgent(os.Getenv("HERDR_PLUGIN_CONTEXT_JSON")),
+		DryRun:     e.dryRun,
 	})
 }
 

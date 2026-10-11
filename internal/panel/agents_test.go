@@ -69,25 +69,78 @@ func TestHiddenAgentsGoLast(t *testing.T) {
 	}
 }
 
+// longAgents are agents whose fields are as long as magpie's ls output makes them: a
+// model of 31 cells, a subagent model, and a config path of 41 cells.
+func longAgents() []magpie.AgentInfo {
+	return []magpie.AgentInfo{
+		{Name: "DeepSeek Harness", ID: "dsh", ConfigPath: "~/.dsh/profiles/example/example.patch.yml", Fields: []magpie.AgentField{
+			{Name: "model", Value: "magpie/deepseek/deepseek-flash"}, {Name: "thinking", Value: "—"},
+		}},
+		{Name: "omp", ID: "omp", ConfigPath: "~/.omp/agent/config.yml", Fields: []magpie.AgentField{
+			{Name: "model", Value: "magpie/codex/gpt-6-astra:medium"}, {Name: "thinking", Value: "high"},
+		}},
+		{Name: "Codex", ID: "codex", ConfigPath: "~/.codex/config.toml", Fields: []magpie.AgentField{
+			{Name: "model", Value: "codex/gpt-6-astra"}, {Name: "effort", Value: "high"},
+			{Name: "subagent model", Value: "codex/gpt-6-astra"},
+		}},
+	}
+}
+
 func TestAgentRowFitsAndCarriesTheConfig(t *testing.T) {
 	st := newStyles(newRenderer(io.Discard, false))
-	a := sampleAgents()[0]
-	for _, w := range []int{20, 40, 80, 120} {
-		line := agentLine(a, true, w, "/home/u", st)
+	agents := longAgents()
+	a := agents[2]
+	for _, w := range []int{20, 40, 58, 80, 120} {
+		line := agentLine(a, true, w, "/home/u", st, agentColumns(agents, "/home/u", w))
 		if dw := displayWidth(line); dw != w {
 			t.Errorf("w=%d: row is %d columns: %q", w, dw, line)
 		}
-		for _, want := range []string{"▸ ", "Claude Code", "claude-opus-4-1"} {
-			if w >= 80 && !strings.Contains(line, want) {
-				t.Errorf("w=%d: row lacks %q: %q", w, want, line)
-			}
-		}
-		if w >= 80 && !strings.Contains(line, "effort high") {
-			t.Errorf("w=%d: row lacks the other fields: %q", w, line)
+		if !strings.HasPrefix(line, "▸ ") {
+			t.Errorf("w=%d: the selected row lacks its mark: %q", w, line)
 		}
 	}
-	if line := agentLine(a, false, 80, "/home/u", st); !strings.HasSuffix(strings.TrimRight(line, " "), "json") {
-		t.Errorf("the config path should end the row, cut from its front: %q", line)
+	line := agentLine(a, false, 120, "/home/u", st, agentColumns(agents, "/home/u", 120))
+	for _, want := range []string{"Codex", "codex/gpt-6-astra", "effort high", "subagent model", "~/.codex/config.toml"} {
+		if !strings.Contains(line, want) {
+			t.Errorf("120 columns: row lacks %q: %q", want, line)
+		}
+	}
+}
+
+func TestAgentColumnsDropThePathThenTheOtherFieldsThenTheEffort(t *testing.T) {
+	agents := longAgents()
+	for _, tc := range []struct {
+		w                   int
+		effort, other, path bool
+	}{
+		{58, false, false, false},
+		{80, true, true, false},
+		{120, true, true, true},
+	} {
+		cols := agentColumns(agents, "/home/u", tc.w)
+		got := [3]bool{cols.effort > 0, cols.other > 0, cols.path > 0}
+		if want := [3]bool{tc.effort, tc.other, tc.path}; got != want {
+			t.Errorf("w=%d: effort, other and path shown = %v, want %v (%+v)", tc.w, got, want, cols)
+		}
+		if cols.name == 0 || cols.model == 0 {
+			t.Errorf("w=%d: the name or the model is left out: %+v", tc.w, cols)
+		}
+	}
+	if cols := agentColumns(agents, "/home/u", 58); cols.model != 31 {
+		t.Errorf("58 columns: model column is %d cells, want the full 31", cols.model)
+	}
+}
+
+func TestAgentModelIsShownWholeToFortyCells(t *testing.T) {
+	agents := longAgents()
+	agents[0].Fields[0].Value = strings.Repeat("m", 45)
+	st := newStyles(newRenderer(io.Discard, false))
+	cols := agentColumns(agents, "/home/u", 120)
+	if cols.model != 40 {
+		t.Errorf("model column is %d cells, want the 40-cell cap", cols.model)
+	}
+	if line := agentLine(agents[0], false, 120, "/home/u", st, cols); !strings.Contains(line, strings.Repeat("m", 39)+"…") {
+		t.Errorf("a 45-cell model should be cut to 40 cells with an ellipsis: %q", line)
 	}
 }
 

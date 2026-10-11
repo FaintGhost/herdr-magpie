@@ -84,6 +84,8 @@ type Deps struct {
 	// FocusAgent is the herdr agent label of the pane the panel was opened from, such
 	// as "claude". The Agents tab selects that agent. "" when there is none.
 	FocusAgent string
+	// DryRun marks every success notice, because the writes behind it were only printed.
+	DryRun bool
 }
 
 // Run shows the panel full screen until the user quits, and returns nil then. The

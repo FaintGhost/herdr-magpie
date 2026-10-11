@@ -14,8 +14,28 @@ import (
 	"time"
 )
 
-// magpieTimeout caps one magpie CLI call. Callers may pass a shorter deadline.
+// magpieTimeout caps one magpie CLI call. Callers may pass a shorter deadline, and
+// may raise the cap with WithCLITimeout.
 const magpieTimeout = 5 * time.Second
+
+// cliTimeoutKey is the context key that WithCLITimeout sets.
+type cliTimeoutKey struct{}
+
+// WithCLITimeout returns ctx with a cap of d for the magpie CLI calls made with it,
+// in place of magpieTimeout. Only the caller that sets it is affected: refresh and
+// doctor keep the default, while the panel's reads, which run beside each other,
+// take up to 20 s.
+func WithCLITimeout(ctx context.Context, d time.Duration) context.Context {
+	return context.WithValue(ctx, cliTimeoutKey{}, d)
+}
+
+// cliCap is the cap for one magpie CLI call made with ctx.
+func cliCap(ctx context.Context) time.Duration {
+	if d, ok := ctx.Value(cliTimeoutKey{}).(time.Duration); ok && d > 0 {
+		return d
+	}
+	return magpieTimeout
+}
 
 // Runner runs an external command and returns its stdout.
 type Runner interface {

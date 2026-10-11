@@ -162,14 +162,32 @@ func TestRoutingFitsEverySize(t *testing.T) {
 	}
 }
 
-func TestRouteColumnsDropOptionalFirst(t *testing.T) {
+func TestRouteColumnsDropTTFTThenProvider(t *testing.T) {
+	rows := []magpie.Request{{Agent: "Go-http-client", Provider: "deepseek", RequestedModel: "deepseek-chat", ServedModel: "deepseek-chat"}}
 	for _, tc := range []struct {
-		w              int
-		agent, provide bool
-	}{{120, true, true}, {72, true, true}, {60, true, false}, {40, false, false}} {
-		agent, provider := routeColumns(tc.w)
-		if agent != tc.agent || provider != tc.provide {
-			t.Errorf("routeColumns(%d) = %v, %v", tc.w, agent, provider)
+		w                     int
+		agent, provider, ttft bool
+	}{
+		{120, true, true, true},
+		{80, true, true, true},
+		{72, true, true, false},
+		{58, true, false, false},
+		{40, false, false, false},
+	} {
+		cols := routeColumns(tc.w, rows)
+		got := [3]bool{cols.agent > 0, cols.provider > 0, cols.ttft > 0}
+		if want := [3]bool{tc.agent, tc.provider, tc.ttft}; got != want {
+			t.Errorf("w=%d: agent, provider and ttft shown = %v, want %v (%+v)", tc.w, got, want, cols)
+		}
+	}
+}
+
+func TestRouteKeepsTheAgentNameWhole(t *testing.T) {
+	r := magpie.Request{Agent: "Go-http-client", Provider: "deepseek", RequestedModel: "deepseek-chat", ServedModel: "deepseek-chat", Status: 200}
+	st := newStyles(newRenderer(io.Discard, false))
+	for _, w := range []int{58, 80, 120} {
+		if line := routeRow(r, w, routeColumns(w, []magpie.Request{r}), st); !strings.Contains(line, "Go-http-client") {
+			t.Errorf("w=%d: the agent name is cut: %q", w, line)
 		}
 	}
 }

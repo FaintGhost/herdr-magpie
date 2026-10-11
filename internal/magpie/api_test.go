@@ -1,6 +1,7 @@
 package magpie
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -182,6 +183,81 @@ func TestUsageAsksForToday(t *testing.T) {
 	defer mu.Unlock()
 	if want := []string{usagePath + "?period=today"}; !slices.Equal(got, want) {
 		t.Errorf("requests = %q, want %q", got, want)
+	}
+}
+
+func TestQuotasSendsKeyAndDecodesEntries(t *testing.T) {
+	const body = `{"object":"list","data":[` +
+		`{"provider":"claude","name":"Claude Code","kind":"subscription","plan":"Max 20x","user":"dev@example.test",` +
+		`"windows":[{"name":"5 hours","used":62,"remaining":38,"resetsAt":"2026-10-12T16:14:00Z"}],` +
+		`"readAt":"2026-10-12T14:00:00Z","lastServedAt":""},` +
+		`{"provider":"deepseek","name":"DeepSeek","kind":"balance","balance":"$1.20"},` +
+		`{"provider":"codex","name":"Codex","kind":"subscription","error":"login expired"}]}`
+	gw := &gatewayLog{}
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET "+quotasPath, func(w http.ResponseWriter, req *http.Request) {
+		gw.record(req)
+		if req.Header.Get("Authorization") != "Bearer "+testKey {
+			http.Error(w, `{"error":{"message":"no API key was sent"}}`, http.StatusUnauthorized)
+			return
+		}
+		io.WriteString(w, body)
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	c := APIClient{BaseURL: srv.URL, KeyFile: writeKey(t, testKey+"\n"), HTTP: srv.Client()}
+	got, err := c.Quotas(t.Context())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("Quotas() returned %d entries, want 3", len(got))
+	}
+	first := got[0]
+	if first.Name != "Claude Code" || first.Plan != "Max 20x" || first.User != "dev@example.test" ||
+		len(first.Windows) != 1 || first.Windows[0].Used != 62 || first.Windows[0].ResetsAt.IsZero() ||
+		first.ReadAt.IsZero() || !first.LastServedAt.IsZero() {
+		t.Errorf("first entry = %+v", first)
+	}
+	if got[1].Kind != "balance" || got[1].Balance != "$1.20" {
+		t.Errorf("balance entry = %+v", got[1])
+	}
+	if got[2].Error != "login expired" {
+		t.Errorf("error entry = %+v", got[2])
+	}
+	paths, auth := gw.seen()
+	if !slices.Equal(paths, []string{quotasPath}) || !slices.Equal(auth, []string{"Bearer " + testKey}) {
+		t.Errorf("requests = %q, auth = %q; want one quotas call with the key", paths, auth)
+	}
+}
+
+func TestQuotasNeedsAKey(t *testing.T) {
+	srv, gw := fakeGateway(t, `{"name":"magpie","version":"0.0.0-test"}`, "{}")
+	for _, keyFile := range []string{filepath.Join(t.TempDir(), "missing"), writeKey(t, "\n")} {
+		c := APIClient{BaseURL: srv.URL, KeyFile: keyFile, HTTP: srv.Client()}
+		if _, err := c.Quotas(t.Context()); !errors.Is(err, errNoGatewayKey) {
+			t.Errorf("Quotas(%s) error = %v, want the no-key error", keyFile, err)
+		}
+	}
+	if paths, _ := gw.seen(); len(paths) != 0 {
+		t.Errorf("sent %q without a key", paths)
+	}
+}
+
+func TestQuotasRefusedErrorOmitsKey(t *testing.T) {
+	const wrong = "not-the-right-key"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, `{"error":{"message":"bad key"}}`, http.StatusUnauthorized)
+	}))
+	t.Cleanup(srv.Close)
+	c := APIClient{BaseURL: srv.URL, KeyFile: writeKey(t, wrong), HTTP: srv.Client()}
+	_, err := c.Quotas(t.Context())
+	if err == nil || !strings.Contains(err.Error(), "401") {
+		t.Fatalf("err = %v, want an HTTP 401 error", err)
+	}
+	if strings.Contains(err.Error(), wrong) {
+		t.Errorf("error %q carries the key", err)
 	}
 }
 

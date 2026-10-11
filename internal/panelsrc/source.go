@@ -30,27 +30,66 @@ type Source struct {
 	Bin       string           // magpie CLI path; empty means "magpie"
 	UsagePath string           // magpie's usage.jsonl
 	Days      int              // session window for Sessions; <= 0 means magpie's default
-	API       magpie.APIClient // gateway base URL and key file; APIUsage is nil without a key
+	API       magpie.APIClient // gateway base URL and key file; Quotas and APIUsage read it, APIUsage is nil without a key
+}
+
+// The panel's magpie CLI reads run two at a time, each under cliReadTimeout. Six feeds
+// load together, and on a busy machine one magpie read takes several seconds.
+const (
+	maxCLIReads    = 2
+	cliReadTimeout = 20 * time.Second
+)
+
+// cliSlots holds a token for each CLI read in flight. Every Source shares it, so the
+// limit holds across the panel's feeds.
+var cliSlots = make(chan struct{}, maxCLIReads)
+
+// readCLI runs one magpie CLI read under the limits. It waits for a free slot, and
+// gives up when ctx ends first.
+func readCLI[T any](ctx context.Context, read func(context.Context) (T, error)) (T, error) {
+	var zero T
+	if err := ctx.Err(); err != nil {
+		return zero, context.Cause(ctx)
+	}
+	select {
+	case cliSlots <- struct{}{}:
+	case <-ctx.Done():
+		return zero, context.Cause(ctx)
+	}
+	defer func() { <-cliSlots }()
+	return read(magpie.WithCLITimeout(ctx, cliReadTimeout))
 }
 
 // Agents runs `magpie ls`.
 func (s Source) Agents(ctx context.Context) ([]magpie.AgentInfo, error) {
-	return magpie.Agents(ctx, s.Magpie, s.Bin)
+	return readCLI(ctx, func(ctx context.Context) ([]magpie.AgentInfo, error) {
+		return magpie.Agents(ctx, s.Magpie, s.Bin)
+	})
 }
 
-// Quotas runs `magpie quota --json`.
+// Quotas reads the gateway's allowances when a gateway key is set. Without a key, or
+// when the gateway read fails, it runs `magpie quota --json`.
 func (s Source) Quotas(ctx context.Context) ([]magpie.Quota, error) {
-	return magpie.Quotas(ctx, s.Magpie, s.Bin)
+	if quotas, err := s.API.Quotas(ctx); err == nil {
+		return quotas, nil
+	}
+	return readCLI(ctx, func(ctx context.Context) ([]magpie.Quota, error) {
+		return magpie.Quotas(ctx, s.Magpie, s.Bin)
+	})
 }
 
 // Accounts runs `magpie accounts --json`.
 func (s Source) Accounts(ctx context.Context) ([]magpie.Account, error) {
-	return magpie.Accounts(ctx, s.Magpie, s.Bin)
+	return readCLI(ctx, func(ctx context.Context) ([]magpie.Account, error) {
+		return magpie.Accounts(ctx, s.Magpie, s.Bin)
+	})
 }
 
 // Profiles runs `magpie profiles`.
 func (s Source) Profiles(ctx context.Context) ([]magpie.Profile, error) {
-	return magpie.Profiles(ctx, s.Magpie, s.Bin)
+	return readCLI(ctx, func(ctx context.Context) ([]magpie.Profile, error) {
+		return magpie.Profiles(ctx, s.Magpie, s.Bin)
+	})
 }
 
 // RecentRequests returns the gateway's usage rows at or after since, from the
@@ -75,7 +114,9 @@ func (s Source) APIUsage(ctx context.Context) (*magpie.UsageSummary, error) {
 
 // Sessions runs `magpie sessions --json` over the session window.
 func (s Source) Sessions(ctx context.Context) ([]magpie.Session, error) {
-	return magpie.Sessions(ctx, s.Magpie, s.Bin, s.Days)
+	return readCLI(ctx, func(ctx context.Context) ([]magpie.Session, error) {
+		return magpie.Sessions(ctx, s.Magpie, s.Bin, s.Days)
+	})
 }
 
 // snapshotFile is the state file that holds the panel's snapshot. The panel names

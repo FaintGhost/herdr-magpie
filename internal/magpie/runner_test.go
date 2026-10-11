@@ -24,6 +24,53 @@ func (f *fakeRunner) Run(_ context.Context, name string, args ...string) ([]byte
 	return []byte(f.out[key]), nil
 }
 
+// deadlineRunner records how long the context of its last call runs for.
+type deadlineRunner struct {
+	left time.Duration
+}
+
+func (r *deadlineRunner) Run(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+	if d, ok := ctx.Deadline(); ok {
+		r.left = time.Until(d)
+	} else {
+		r.left = -1
+	}
+	return []byte("[]"), nil
+}
+
+func TestCLICapIsFiveSecondsUnlessRaised(t *testing.T) {
+	r := &deadlineRunner{}
+	if _, err := Quotas(t.Context(), r, "magpie"); err != nil {
+		t.Fatal(err)
+	}
+	if r.left <= 4*time.Second || r.left > magpieTimeout {
+		t.Errorf("default cap leaves %v, want about %v", r.left, magpieTimeout)
+	}
+
+	raised := WithCLITimeout(t.Context(), 20*time.Second)
+	if _, err := Quotas(raised, r, "magpie"); err != nil {
+		t.Fatal(err)
+	}
+	if r.left <= 15*time.Second || r.left > 20*time.Second {
+		t.Errorf("raised cap leaves %v, want about 20s", r.left)
+	}
+	if _, err := Sessions(raised, r, "magpie", 7); err != nil {
+		t.Fatal(err)
+	}
+	if r.left <= 15*time.Second || r.left > 20*time.Second {
+		t.Errorf("Sessions under the raised cap leaves %v, want about 20s", r.left)
+	}
+
+	shorter, cancel := context.WithTimeout(raised, time.Second)
+	defer cancel()
+	if _, err := Quotas(shorter, r, "magpie"); err != nil {
+		t.Fatal(err)
+	}
+	if r.left > time.Second {
+		t.Errorf("a caller's shorter deadline leaves %v, want at most 1s", r.left)
+	}
+}
+
 func TestExecRunnerRun(t *testing.T) {
 	tests := []struct {
 		name        string
