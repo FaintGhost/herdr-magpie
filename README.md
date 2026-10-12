@@ -63,7 +63,7 @@ It prints TOML that you merge into your Herdr config by hand. The printed paths 
 
 - `tab_bar_right`: one command entry that runs `status` every 10 seconds, guarded so that a missing binary prints nothing.
 - `[ui.sidebar.agents]` and `[ui.sidebar.spaces]`: `$magpie_*` tokens added to rows you already show.
-- Optional `[[keys.command]]` entries: `prefix+m` invokes the `open-sessions` action, and `prefix+M` opens the panel.
+- An optional `[[keys.command]]` entry: `prefix+m` invokes the `open-panel` action. The panel includes the session launcher as its Sessions tab; the `open-sessions` action still opens the launcher alone if you bind it.
 
 Sidebar layout and keybindings are read from the **client's** config. If you attach with `herdr --remote`, put the sidebar rows and the keybinding in the `config.toml` of the machine you attach from; the top-bar entry stays on the server.
 
@@ -71,7 +71,7 @@ Setup never edits your configuration. Keep your existing entries, do not add a s
 
 ### Session launcher
 
-Press the keybinding from setup (`prefix+m`, that is Ctrl+B then M with the default prefix), or run:
+Open the panel's Sessions tab (`prefix+m`, then `5`), or open the launcher alone with:
 
 ```sh
 herdr plugin pane open --plugin faintghost.magpie --entrypoint sessions
@@ -81,7 +81,7 @@ The popup lists sessions newest first. Type to filter by agent, title or directo
 
 ### Panel
 
-Press `prefix+M` (Ctrl+B, then Shift+M with the default prefix), or run:
+Press `prefix+m` (Ctrl+B, then M with the default prefix), or run:
 
 ```sh
 herdr plugin pane open --plugin faintghost.magpie --entrypoint panel

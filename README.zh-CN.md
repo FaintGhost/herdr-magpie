@@ -63,7 +63,7 @@ herdr plugin pane open --plugin faintghost.magpie --entrypoint setup
 
 - `tab_bar_right`：一个命令项，每 10 秒运行一次 `status`，并带有防护，二进制缺失时不输出任何内容。
 - `[ui.sidebar.agents]` 与 `[ui.sidebar.spaces]`：把 `$magpie_*` token 加入你已经在用的行。
-- 可选的 `[[keys.command]]`：`prefix+m` 调用 `open-sessions` action 打开会话弹窗，`prefix+M` 打开面板。
+- 可选的 `[[keys.command]]`：`prefix+m` 调用 `open-panel` action 打开面板。会话启动器已作为面板的 Sessions tab；如需单独打开启动器，可另行绑定 `open-sessions` action。
 
 侧边栏布局与快捷键读取的是**客户端**的配置。如果你用 `herdr --remote` 连接，请把侧边栏 rows 和快捷键写进你发起连接那台机器的 `config.toml`；状态栏条目仍放在服务器上。
 
@@ -71,7 +71,7 @@ setup 从不修改你的配置。保留已有的条目，不要再新增一个 `
 
 ### 会话启动器
 
-按 setup 里配置的快捷键（`prefix+m`，默认前缀下即先按 Ctrl+B 再按 M），或运行：
+打开面板的 Sessions tab（`prefix+m` 后按 `5`），或单独打开启动器：
 
 ```sh
 herdr plugin pane open --plugin faintghost.magpie --entrypoint sessions
@@ -81,7 +81,7 @@ herdr plugin pane open --plugin faintghost.magpie --entrypoint sessions
 
 ### 面板
 
-按 `prefix+M`（默认前缀下即先按 Ctrl+B，再按 Shift+M），或运行：
+按 `prefix+m`（默认前缀下即先按 Ctrl+B，再按 M），或运行：
 
 ```sh
 herdr plugin pane open --plugin faintghost.magpie --entrypoint panel

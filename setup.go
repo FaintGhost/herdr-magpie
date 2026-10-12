@@ -106,16 +106,10 @@ func setupText(info setupInfo) string {
 	b.WriteString("[ui.sidebar.spaces]\n")
 	b.WriteString(`rows = [["state_icon", "workspace"], ["branch", "git_status"], ["$magpie_cost"]]` + "\n\n")
 
-	b.WriteString("3. Session launcher (optional). Pick another key if prefix+m is already bound.\n\n")
+	b.WriteString("3. Panel keybinding (optional). Pick another key if prefix+m is already bound.\n")
+	b.WriteString("   The panel includes the session launcher as its Sessions tab.\n\n")
 	b.WriteString("[[keys.command]]\n")
 	b.WriteString(`key = "prefix+m"` + "\n")
-	b.WriteString(`type = "plugin_action"` + "\n")
-	b.WriteString(`command = "faintghost.magpie.open-sessions"` + "\n")
-	b.WriteString(`description = "Open magpie sessions"` + "\n\n")
-
-	b.WriteString("4. Panel (optional). Pick another key if prefix+M is already bound.\n\n")
-	b.WriteString("[[keys.command]]\n")
-	b.WriteString(`key = "prefix+M"` + "\n")
 	b.WriteString(`type = "plugin_action"` + "\n")
 	b.WriteString(`command = "faintghost.magpie.open-panel"` + "\n")
 	b.WriteString(`description = "Open the magpie panel"` + "\n\n")
