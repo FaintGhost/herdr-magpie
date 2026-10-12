@@ -15,7 +15,7 @@ import (
 
 const (
 	pluginID = "faintghost.magpie"
-	version  = "0.1.0"
+	version  = "0.2.0"
 
 	// Files in the state directory. Each has one writer, so only the lock
 	// shared by status and refresh needs coordination.

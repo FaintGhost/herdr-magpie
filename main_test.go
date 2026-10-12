@@ -26,7 +26,7 @@ func TestRunDispatch(t *testing.T) {
 	}{
 		{name: "no arguments prints usage", wantOut: "Usage: herdr-magpie <command>"},
 		{name: "help", args: []string{"--help"}, wantOut: "Commands:"},
-		{name: "version", args: []string{"version"}, wantExact: "herdr-magpie 0.1.0\n"},
+		{name: "version", args: []string{"version"}, wantExact: "herdr-magpie 0.2.0\n"},
 		{name: "unknown command", args: []string{"frobnicate"}, wantErr: errUsage},
 		{name: "help for one command succeeds", args: []string{"setup", "--help"}, wantOut: "Usage: herdr-magpie setup [options]"},
 		{name: "stray argument is a usage error", args: []string{"setup", "extra"}, wantErr: errUsage},

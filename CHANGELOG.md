@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 - 2026-10-12
 
 - Add the magpie panel (`prefix+m`, action `open-panel`): Agents, Allowances, Usage, Routing and Sessions tabs in one Herdr popup, painted from a cached snapshot and refreshed in the background.
 - Agents shows each agent's model and reasoning with the Herdr panes running it; opening the panel from a pane selects that pane's agent.

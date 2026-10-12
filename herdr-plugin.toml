@@ -1,6 +1,6 @@
 id = "faintghost.magpie"
 name = "Magpie"
-version = "0.1.0"
+version = "0.2.0"
 min_herdr_version = "0.9.1"
 description = "magpie gateway health, upstream error storms, per-session model and cost, and a session launcher in Herdr"
 platforms = ["linux"]
