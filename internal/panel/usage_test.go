@@ -70,13 +70,13 @@ func TestTopRows(t *testing.T) {
 func TestStormTable(t *testing.T) {
 	st := newStyles(newRenderer(io.Discard, false))
 	head, rows := stormTable(nil, 80, st)
-	if len(head) != 1 || !strings.Contains(head[0], "none in the last 10m") || rows != nil {
+	if len(head) != 1 || !strings.Contains(head[0], "none") || rows != nil {
 		t.Errorf("empty table = %q, %q", head, rows)
 	}
 
 	storms := computeStorms(sampleRequests(testNow), testNow)
 	head, rows = stormTable(storms, 80, st)
-	if len(head) != 1 || !strings.Contains(head[0], "provider") || !strings.Contains(head[0], "state") {
+	if len(head) != 1 || !strings.Contains(head[0], "PROVIDER") || !strings.Contains(head[0], "STATE") {
 		t.Errorf("table header = %q", head)
 	}
 	if len(rows) != len(storms) {
@@ -109,7 +109,7 @@ func TestCostBlock(t *testing.T) {
 		m := testModel(t, Deps{Source: src})
 		m.snap.APIUsage = stampAt(testNow, src.api)
 		got := strings.Join(m.costBlock(80, 40), "\n")
-		for _, want := range []string{"Gateway cost · today", "412 calls · $3.12", "by agent", "by model", "omp", "claude-sonnet"} {
+		for _, want := range []string{"Gateway cost · today", "412 calls · $3.12", "AGENT", "MODEL", "omp", "claude-sonnet"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("cost block lacks %q:\n%s", want, got)
 			}
@@ -181,11 +181,11 @@ func TestCostBlockStacksTheModelTableBelowNinetyColumns(t *testing.T) {
 	m.snap.APIUsage = stampAt(testNow, src.api)
 
 	narrow := strings.Split(strings.Join(m.costBlock(80, 40), "\n"), "\n")
-	if agent, model := lineWith(narrow, "by agent"), lineWith(narrow, "by model"); agent < 0 || model <= agent {
+	if agent, model := lineWith(narrow, "AGENT"), lineWith(narrow, "MODEL"); agent < 0 || model <= agent {
 		t.Errorf("at 80 columns the model table should follow the agent table: agent line %d, model line %d", agent, model)
 	}
 	wide := strings.Split(strings.Join(m.costBlock(120, 40), "\n"), "\n")
-	if agent, model := lineWith(wide, "by agent"), lineWith(wide, "by model"); agent < 0 || agent != model {
+	if agent, model := lineWith(wide, "AGENT"), lineWith(wide, "MODEL"); agent < 0 || agent != model {
 		t.Errorf("at 120 columns the tables should share a line: agent line %d, model line %d", agent, model)
 	}
 }
@@ -195,12 +195,12 @@ func TestCostBlockHeadingsStayWholeAtFiftyEightColumns(t *testing.T) {
 	m := testModel(t, Deps{Source: src})
 	m.snap.APIUsage = stampAt(testNow, src.api)
 	got := strings.Join(m.costBlock(58, 40), "\n")
-	for _, want := range []string{"by agent", "by model", "errors", "claude-sonnet", "deepseek-chat"} {
+	for _, want := range []string{"AGENT", "MODEL", "ERRORS", "CALLS", "claude-sonnet", "deepseek-chat"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("58-column cost block lacks %q:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "by a…") || strings.Contains(got, "by m…") {
+	if strings.Contains(got, "A…") || strings.Contains(got, "M…") {
 		t.Errorf("58-column headings are cut:\n%s", got)
 	}
 }

@@ -307,3 +307,23 @@ func TestUsageLineMapping(t *testing.T) {
 		})
 	}
 }
+
+func TestSameModelSetsAsideTheProviderAndTheEffort(t *testing.T) {
+	tests := []struct {
+		a, b string
+		same bool
+	}{
+		{"codex/gpt-6-astra", "gpt-6-astra", true},
+		{"magpie/codex/gpt-6-astra:medium", "gpt-6-astra", true},
+		{"gpt-6-astra:high", "codex/gpt-6-astra", true},
+		{"deepseek-flash", "deepseek-v4-flash", false},
+		{"x/x-latest", "x-1.13", false},
+		{"llama3:8b", "llama3", false}, // a tag with a digit is not an effort
+		{"", "", true},
+	}
+	for _, tc := range tests {
+		if got := SameModel(tc.a, tc.b); got != tc.same {
+			t.Errorf("SameModel(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.same)
+		}
+	}
+}

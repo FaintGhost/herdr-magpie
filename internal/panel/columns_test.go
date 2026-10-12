@@ -35,9 +35,13 @@ func TestFitColumnsStopsAtTheFirstColumnThatDoesNotFit(t *testing.T) {
 }
 
 func TestFitColumnsFlexTakesWhatIsLeft(t *testing.T) {
-	cols := []column{{min: 5, want: 5}, {min: 4, want: 4, flex: true}, {min: 3, want: 3}}
+	cols := []column{{min: 5, want: 5}, {min: 4, want: 4, max: 18, flex: true}, {min: 3, want: 3}}
 	if got := fitColumns(30, 2, cols); !slices.Equal(got, []int{5, 18, 3}) {
 		t.Errorf("fitColumns(30) = %v, want [5 18 3]", got)
+	}
+	// The flex column stops at its max, and the rest of the row stays empty.
+	if got := fitColumns(60, 2, cols); !slices.Equal(got, []int{5, 18, 3}) {
+		t.Errorf("fitColumns(60) = %v, want the flex column capped at 18", got)
 	}
 }
 
@@ -61,5 +65,18 @@ func TestCellSegsSkipsEmptyCellsAndAligns(t *testing.T) {
 	}
 	if want := "a  " + " " + "   b"; b.String() != want {
 		t.Errorf("cells = %q, want %q", b.String(), want)
+	}
+}
+
+func TestSizedColFlexStopsAtItsWidestCell(t *testing.T) {
+	// Short titles under a cap of 48 must not grow to 48: that would open a gap
+	// before the next column.
+	c := sizedCol("TITLE", []string{"ab", "abcd"}, 2, 48, true)
+	if c.max != 5 || c.want != 5 {
+		t.Errorf("sizedCol = %+v, want max and want 5 (the header is wider than the cells)", c)
+	}
+	got := fitColumns(80, 2, []column{{min: 4, want: 4}, {min: c.min, want: c.min, max: c.max, flex: true}, {min: 6, want: 6}})
+	if !slices.Equal(got, []int{4, 5, 6}) {
+		t.Errorf("fitColumns = %v, want [4 5 6]", got)
 	}
 }

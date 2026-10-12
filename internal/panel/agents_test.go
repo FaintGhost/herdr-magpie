@@ -91,43 +91,76 @@ func TestAgentRowFitsAndCarriesTheConfig(t *testing.T) {
 	agents := longAgents()
 	a := agents[2]
 	for _, w := range []int{20, 40, 58, 80, 120} {
-		line := agentLine(a, true, w, "/home/u", st, agentColumns(agents, "/home/u", w))
-		if dw := displayWidth(line); dw != w {
-			t.Errorf("w=%d: row is %d columns: %q", w, dw, line)
+		bw, cw := splitWidth(w)
+		line := agentLine(a, true, bw, "/home/u", st, agentColumns(agents, "/home/u", cw))
+		if dw := displayWidth(line); dw != bw {
+			t.Errorf("w=%d: row is %d columns, want %d: %q", w, dw, bw, line)
 		}
 		if !strings.HasPrefix(line, "▸ ") {
 			t.Errorf("w=%d: the selected row lacks its mark: %q", w, line)
 		}
 	}
-	line := agentLine(a, false, 120, "/home/u", st, agentColumns(agents, "/home/u", 120))
-	for _, want := range []string{"Codex", "codex/gpt-6-astra", "effort high", "subagent model", "~/.codex/config.toml"} {
+	bw, cw := splitWidth(120)
+	line := agentLine(a, false, bw, "/home/u", st, agentColumns(agents, "/home/u", cw))
+	for _, want := range []string{"Codex", "codex/gpt-6-astra", "effort high", "subagent model", "config.toml"} {
 		if !strings.Contains(line, want) {
 			t.Errorf("120 columns: row lacks %q: %q", want, line)
 		}
 	}
 }
 
-func TestAgentColumnsDropThePathThenTheOtherFieldsThenTheEffort(t *testing.T) {
+func TestAgentColumnsDropThePathThenTheOtherFieldsThenTheReason(t *testing.T) {
 	agents := longAgents()
 	for _, tc := range []struct {
 		w                   int
-		effort, other, path bool
+		reason, other, path bool
 	}{
 		{58, false, false, false},
 		{80, true, true, false},
 		{120, true, true, true},
 	} {
-		cols := agentColumns(agents, "/home/u", tc.w)
-		got := [3]bool{cols.effort > 0, cols.other > 0, cols.path > 0}
-		if want := [3]bool{tc.effort, tc.other, tc.path}; got != want {
-			t.Errorf("w=%d: effort, other and path shown = %v, want %v (%+v)", tc.w, got, want, cols)
+		_, cw := splitWidth(tc.w)
+		cols := agentColumns(agents, "/home/u", cw)
+		got := [3]bool{cols.reason > 0, cols.other > 0, cols.path > 0}
+		if want := [3]bool{tc.reason, tc.other, tc.path}; got != want {
+			t.Errorf("w=%d: reason, other and path shown = %v, want %v (%+v)", tc.w, got, want, cols)
 		}
 		if cols.name == 0 || cols.model == 0 {
 			t.Errorf("w=%d: the name or the model is left out: %+v", tc.w, cols)
 		}
 	}
-	if cols := agentColumns(agents, "/home/u", 58); cols.model != 31 {
-		t.Errorf("58 columns: model column is %d cells, want the full 31", cols.model)
+	if _, cw := splitWidth(58); agentColumns(agents, "/home/u", cw).model < 31 {
+		t.Errorf("58 columns: model column is %d cells, want at least the full 31", agentColumns(agents, "/home/u", cw).model)
+	}
+}
+
+func TestAgentReasonJoinsEffortAndThinking(t *testing.T) {
+	both := magpie.AgentInfo{Name: "x", ID: "x", Fields: []magpie.AgentField{
+		{Name: "model", Value: "m"}, {Name: "effort", Value: "high"}, {Name: "thinking", Value: "on"},
+		{Name: "subagent model", Value: "s"},
+	}}
+	if got := agentReason(both); got != "effort high · thinking on" {
+		t.Errorf("agentReason = %q", got)
+	}
+	if got := agentOther(both); got != "subagent model s" {
+		t.Errorf("agentOther = %q: the reasoning fields and the model are not other fields", got)
+	}
+	if got := agentReason(magpie.AgentInfo{}); got != "" {
+		t.Errorf("an agent with no reasoning fields has reason %q", got)
+	}
+}
+
+func TestAgentsHeaderLinesUpWithItsRows(t *testing.T) {
+	m := panelModel(t, samplePanelSource(), &fakeHerdr{panes: samplePanes()}, nil, 120, 32)
+	press(m, "1")
+	lines := strings.Split(ansiFree(m.View()), "\n")
+	header, row := lineWith(lines, "REASONING"), lineWith(lines, "claude-opus-4-1")
+	if header < 0 || row < 0 {
+		t.Fatalf("no column titles or no Claude row:\n%s", m.View())
+	}
+	at := displayWidth(lines[header][:strings.Index(lines[header], "MODEL")])
+	if got := displayWidth(lines[row][:strings.Index(lines[row], "claude-opus-4-1")]); got != at {
+		t.Errorf("the model starts at column %d, but the MODEL title at %d", got, at)
 	}
 }
 
@@ -135,11 +168,12 @@ func TestAgentModelIsShownWholeToFortyCells(t *testing.T) {
 	agents := longAgents()
 	agents[0].Fields[0].Value = strings.Repeat("m", 45)
 	st := newStyles(newRenderer(io.Discard, false))
-	cols := agentColumns(agents, "/home/u", 120)
+	bw, cw := splitWidth(120)
+	cols := agentColumns(agents, "/home/u", cw)
 	if cols.model != 40 {
 		t.Errorf("model column is %d cells, want the 40-cell cap", cols.model)
 	}
-	if line := agentLine(agents[0], false, 120, "/home/u", st, cols); !strings.Contains(line, strings.Repeat("m", 39)+"…") {
+	if line := agentLine(agents[0], false, bw, "/home/u", st, cols); !strings.Contains(line, strings.Repeat("m", 39)+"…") {
 		t.Errorf("a 45-cell model should be cut to 40 cells with an ellipsis: %q", line)
 	}
 }
@@ -147,11 +181,12 @@ func TestAgentModelIsShownWholeToFortyCells(t *testing.T) {
 func TestPaneLineNamesThePaneAndShortensItsDirectory(t *testing.T) {
 	st := newStyles(newRenderer(io.Discard, false))
 	p := herdr.Agent{PaneID: "w3H:p1", Agent: "claude", Status: "working", CWD: "/home/u/pp/x"}
-	line := paneLine(p, false, 80, "/home/u", st)
-	if want := "    w3H:p1 · claude · working · ~/pp/x"; !strings.HasPrefix(line, want) {
+	pc := paneColumns([]agentBlock{{panes: []herdr.Agent{p}}})
+	line := paneLine(p, false, 80, "/home/u", st, pc)
+	if want := "    └ w3H:p1  working  ~/pp/x"; !strings.HasPrefix(line, want) {
 		t.Errorf("pane line = %q, want it to start %q", line, want)
 	}
-	if dw := displayWidth(paneLine(p, false, 12, "/home/u", st)); dw != 12 {
+	if dw := displayWidth(paneLine(p, false, 12, "/home/u", st, pc)); dw != 12 {
 		t.Errorf("narrow pane line is %d columns", dw)
 	}
 }
@@ -161,7 +196,7 @@ func TestAgentsTabShowsThePanesUnderTheirAgent(t *testing.T) {
 	m := panelModel(t, src, &fakeHerdr{panes: samplePanes()}, nil, 120, 32)
 	press(m, "1")
 	view := m.View()
-	for _, want := range []string{"Claude Code", "w3H:p1 · claude · working", "w20:p1 · claude · idle", "w36:p1 · codex · blocked", "DeepSeek Harness"} {
+	for _, want := range []string{"Claude Code", "└ w3H:p1  working", "└ w20:p1  idle", "└ w36:p1  blocked", "DeepSeek Harness"} {
 		if !strings.Contains(view, want) {
 			t.Errorf("Agents tab lacks %q:\n%s", want, view)
 		}

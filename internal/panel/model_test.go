@@ -439,7 +439,7 @@ func TestEveryTabHasItsOwnBody(t *testing.T) {
 	for _, c := range []struct {
 		key, want string
 	}{
-		{"1", "Agents"}, {"2", "Max 20x"}, {"3", "Provider errors"}, {"4", "last 1h"}, {"5", "press / to filter"},
+		{"1", "Agents"}, {"2", "Max 20x"}, {"3", "Provider errors"}, {"4", "last 1h"}, {"5", "/ filter"},
 	} {
 		press(m, c.key)
 		if got := m.View(); !strings.Contains(got, c.want) {

@@ -261,16 +261,17 @@ func (m *Model) landSave(msg profileSavedMsg) tea.Cmd {
 // line per profile with its summary. The selected profile is always on screen.
 func (m *Model) profileLines(w, h int) []string {
 	st := m.st
-	out := []string{line(w, seg{"Profiles", st.bold}, seg{" · Enter apply · S save current setup · Esc close", st.dim})}
+	bw, _ := splitWidth(w)
+	out := []string{line(bw, seg{"  ", st.base}, seg{"Profiles", st.bold}, seg{" · Enter apply · S save current setup · Esc close", st.dim})}
 	if e := m.feeds[feedProfiles].err; e != "" {
-		out = append(out, line(w, seg{"profiles: " + clean(e), st.warn}))
+		out = append(out, noteLine(bw, st.warn, "profiles: "+clean(e)))
 	}
 	profs := m.snap.Profiles.Data
 	switch {
 	case len(profs) == 0 && m.loading(feedProfiles):
-		return append(out, line(w, seg{"loading…", st.dim}))
+		return append(out, noteLine(bw, st.dim, "loading…"))
 	case len(profs) == 0 && m.feeds[feedProfiles].err == "":
-		return append(out, line(w, seg{noProfilesText, st.dim}))
+		return append(out, noteLine(bw, st.dim, noProfilesText))
 	case len(profs) == 0:
 		return out
 	}
@@ -286,7 +287,7 @@ func (m *Model) profileLines(w, h int) []string {
 			mark, style = "▸ ", st.bold
 		}
 		pr := profs[i]
-		out = append(out, line(w, seg{mark + fit(clean(pr.Name), 24) + "  ", style}, seg{clean(pr.Summary), st.dim}))
+		out = append(out, line(bw, seg{mark + fit(clean(pr.Name), 24) + "  ", style}, seg{clean(pr.Summary), st.dim}))
 	}
 	return out
 }

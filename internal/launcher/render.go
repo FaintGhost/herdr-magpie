@@ -8,8 +8,6 @@ import (
 	"time"
 	"unicode"
 
-	"golang.org/x/text/width"
-
 	"github.com/FaintGhost/herdr-magpie/internal/magpie"
 )
 
@@ -29,92 +27,6 @@ const (
 	fixedW  = markW + agentW + gapW + ageW + gapW + costW + gapW
 	minRest = 20 // below this many columns, the directory column is dropped
 )
-
-// runeWidth is the number of terminal columns r takes. East Asian wide and
-// fullwidth characters take two; combining and format characters take none.
-func runeWidth(r rune) int {
-	if unicode.In(r, unicode.Mn, unicode.Me, unicode.Cf) {
-		return 0
-	}
-	switch width.LookupRune(r).Kind() {
-	case width.EastAsianWide, width.EastAsianFullwidth:
-		return 2
-	}
-	return 1
-}
-
-// displayWidth is the number of terminal columns s takes.
-func displayWidth(s string) int {
-	n := 0
-	for _, r := range s {
-		n += runeWidth(r)
-	}
-	return n
-}
-
-// fit returns s cut or padded to exactly w columns. A cut ends in "…".
-func fit(s string, w int) string {
-	if w <= 0 {
-		return ""
-	}
-	if sw := displayWidth(s); sw <= w {
-		return s + strings.Repeat(" ", w-sw)
-	}
-	var b strings.Builder
-	used := 0
-	for _, r := range s {
-		rw := runeWidth(r)
-		if used+rw > w-1 {
-			break
-		}
-		b.WriteRune(r)
-		used += rw
-	}
-	b.WriteString("…")
-	return b.String() + strings.Repeat(" ", w-used-1)
-}
-
-// tailFit is fit for paths: when it cuts, it keeps the end of s.
-func tailFit(s string, w int) string {
-	if w <= 0 {
-		return ""
-	}
-	if sw := displayWidth(s); sw <= w {
-		return s + strings.Repeat(" ", w-sw)
-	}
-	rs := []rune(s)
-	used := 0
-	i := len(rs)
-	for i > 0 {
-		rw := runeWidth(rs[i-1])
-		if used+rw > w-1 {
-			break
-		}
-		used += rw
-		i--
-	}
-	return "…" + string(rs[i:]) + strings.Repeat(" ", w-used-1)
-}
-
-// rjust right-aligns s in w columns, cutting it when it is wider.
-func rjust(s string, w int) string {
-	if sw := displayWidth(s); sw < w {
-		return strings.Repeat(" ", w-sw) + s
-	}
-	return fit(s, w)
-}
-
-// prefix returns the longest leading part of s that is at most w columns wide.
-func prefix(s string, w int) string {
-	used := 0
-	for i, r := range s {
-		used += runeWidth(r)
-		if used > w {
-			return s[:i]
-		}
-	}
-	return s
-}
 
 // sanitize makes session text safe to draw. Control characters, Esc and newlines
 // among them, become spaces, and invisible format characters, which can reorder

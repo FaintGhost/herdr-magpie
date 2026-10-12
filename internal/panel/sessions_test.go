@@ -25,7 +25,7 @@ func typeKeys(m *Model, keys ...string) {
 func TestSessionsHeaderCountsRowsAndOpenPanes(t *testing.T) {
 	m := sessionsModel(t, &fakeHerdr{panes: samplePanes()}, nil, 120, 32)
 	view := m.View()
-	if !strings.Contains(view, "5 of 5 · 4 open") {
+	if !strings.Contains(view, "5 sessions · 4 open") {
 		t.Errorf("header lacks the counts:\n%s", view)
 	}
 	if !strings.Contains(view, "● ") {
@@ -78,7 +78,7 @@ func TestSessionsEscLeavesTheFilterAndKeepsIt(t *testing.T) {
 	if m.sess.filtering || m.sess.query != "zz" || m.tab != tabSessions {
 		t.Errorf("after esc: filtering %v, query %q, tab %v", m.sess.filtering, m.sess.query, m.tab)
 	}
-	if view := m.View(); !strings.Contains(view, "filter: zz") || !strings.Contains(view, "no session matches") {
+	if view := m.View(); !strings.Contains(view, "/ zz") || !strings.Contains(view, "no session matches") {
 		t.Errorf("the kept filter should still apply:\n%s", view)
 	}
 	typeKeys(m, "1")
@@ -275,7 +275,7 @@ func TestSessionsCursorStaysInTheRows(t *testing.T) {
 
 func TestSessionsHeaderWithNoFilterHintsAtIt(t *testing.T) {
 	m := sessionsModel(t, nil, nil, 80, 24)
-	if got := ansiFree(m.sessionsHeader(80, 5, 5, 0)); !strings.Contains(got, "press / to filter") {
+	if got := ansiFree(m.sessionsHeader(80, 5, 5, 0)); !strings.Contains(got, "/ filter") || !strings.Contains(got, "5 sessions · 0 open") {
 		t.Errorf("header = %q", got)
 	}
 }

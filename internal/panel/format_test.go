@@ -21,6 +21,10 @@ func TestDisplayWidth(t *testing.T) {
 		{name: "zero-width joiner adds nothing", s: "a‍b", want: 2},
 		{name: "progress cells are one column", s: "▰▰▱", want: 3},
 		{name: "ellipsis and dot are one column", s: "…·", want: 2},
+		{name: "VS16 emoji is two columns", s: "🖥️ VPS", want: 6},
+		{name: "emoji and space", s: "📝 a", want: 4},
+		{name: "Chinese pair", s: "中文", want: 4},
+		{name: "progress, dot, ellipsis and arrow are one each", s: "▰·…→", want: 4},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -156,9 +160,9 @@ func TestResetText(t *testing.T) {
 		want string
 	}{
 		{name: "unknown", at: time.Time{}, want: ""},
-		{name: "in two hours", at: now.Add(134 * time.Minute), want: "resets in 2h14m"},
+		{name: "in two hours", at: now.Add(134 * time.Minute), want: "2h14m"},
 		{name: "already passed", at: now.Add(-time.Minute), want: "reset passed"},
-		{name: "now", at: now, want: "resets in <1m"},
+		{name: "now", at: now, want: "<1m"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

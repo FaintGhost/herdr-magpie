@@ -85,6 +85,9 @@ func Fit(s string, w int) string { return fit(s, w) }
 // TailFit is Fit for paths: when it cuts, it keeps the end (see tailFit).
 func TailFit(s string, w int) string { return tailFit(s, w) }
 
+// RJust right-aligns s in w columns, cutting it when it is wider (see rjust).
+func RJust(s string, w int) string { return rjust(s, w) }
+
 // RelTime says how long ago t was, as "now", "5m", "3h" or "2d", or "-" for a zero
 // time (see relTime).
 func RelTime(now, t time.Time) string { return relTime(now, t) }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -157,6 +158,7 @@ func tailUsage(path string, since time.Time, maxBytes, block int64) ([]Request, 
 // not with the requested model: a routing group or a "provider/" prefix makes the
 // request differ from its provider id, and that is not a swap. A record from
 // before req was kept names only the provider model, which then stands for the request.
+// SameModel makes the comparison ignore the prefix and an effort suffix.
 func decodeUsageLine(line []byte) (Request, error) {
 	var u usageLine
 	if err := json.Unmarshal(line, &u); err != nil {
@@ -171,7 +173,7 @@ func decodeUsageLine(line []byte) (Request, error) {
 		Agent:          u.Agent,
 		RequestedModel: cmp.Or(u.Req, u.Model),
 		ServedModel:    u.Served,
-		Swapped:        u.Served != "" && u.Served != u.Model,
+		Swapped:        u.Served != "" && !SameModel(u.Served, u.Model),
 		Provider:       u.Provider,
 		Host:           u.Host,
 		Error:          u.Err != "",
@@ -181,4 +183,34 @@ func decodeUsageLine(line []byte) (Request, error) {
 		RequestID:      u.RID,
 		TTFT:           time.Duration(u.TTFTMS) * time.Millisecond,
 	}, nil
+}
+
+// SameModel reports whether two model names are the same model, once the
+// "<provider>/" in front of each and the ":<effort>" after each are set aside.
+func SameModel(a, b string) bool {
+	return BareModel(a) == BareModel(b)
+}
+
+// BareModel is a model name without the provider prefix that leads it, and without
+// the effort suffix that ends it: "magpie/codex/gpt-6-astra:high" is "gpt-6-astra".
+// Only letters after the last colon are an effort, so "llama3:8b" keeps its tag.
+func BareModel(name string) string {
+	name = name[strings.LastIndex(name, "/")+1:]
+	if i := strings.LastIndex(name, ":"); i >= 0 && isLetters(name[i+1:]) {
+		name = name[:i]
+	}
+	return name
+}
+
+// isLetters reports whether s is one or more ASCII letters.
+func isLetters(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') {
+			return false
+		}
+	}
+	return true
 }

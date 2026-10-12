@@ -24,6 +24,10 @@ func TestDisplayWidth(t *testing.T) {
 		{name: "combining mark adds nothing", s: "é", want: 1},
 		{name: "zero-width joiner adds nothing", s: "a‍b", want: 2},
 		{name: "ambiguous width counts as one", s: "●…", want: 2},
+		{name: "VS16 emoji is two columns", s: "🖥️ VPS", want: 6},
+		{name: "emoji and space", s: "📝 a", want: 4},
+		{name: "Chinese pair", s: "中文", want: 4},
+		{name: "progress, dot, ellipsis and arrow are one each", s: "▰·…→", want: 4},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -66,6 +70,8 @@ func TestTailFitKeepsTheEnd(t *testing.T) {
 		{s: "/root/pp/demo-app", w: 8, want: "…emo-app"},
 		{s: "abc", w: 5, want: "abc  "},
 		{s: "中文测试", w: 5, want: "…测试"},
+		{s: "中文测试", w: 4, want: "…试 "}, // the wide character at the cut is dropped, not split
+		{s: "🖥️ab", w: 3, want: "…ab"},
 		{s: "abcdef", w: 1, want: "…"},
 		{s: "abc", w: 0, want: ""},
 	}
@@ -327,4 +333,15 @@ func TestHeaderKeepsTheTypedEnd(t *testing.T) {
 		t.Errorf("header %q should keep the end of the filter and the counts", header)
 	}
 	checkLines(t, m.frame(testNow), 60, 4)
+}
+
+func TestVS16RowIsExactWidthAndKeepsTheDirectory(t *testing.T) {
+	it := item{session: magpie.Session{Agent: "claude", Title: "🖥️ VPS 修复登录", CWD: "/home/u/pp/app", Last: testNow.Add(-time.Hour)}}
+	row := newLayout(136, []item{it}, "/home/u").row(it, testNow)
+	if got := displayWidth(row); got != 136 {
+		t.Errorf("row is %d columns, want 136: %q", got, row)
+	}
+	if !strings.HasSuffix(strings.TrimRight(row, " "), "~/pp/app") {
+		t.Errorf("row %q does not end with the directory", row)
+	}
 }

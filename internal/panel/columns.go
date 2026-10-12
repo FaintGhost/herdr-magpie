@@ -6,21 +6,24 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// tableGap is the space between the columns of a table.
+const tableGap = 2
+
 // column describes one column of a table row, in cells. A column is kept while it
-// fits at min, and grows toward want when there is room. A min of 0 leaves it out.
-// A flex column takes the room that the other columns leave.
+// fits at min, and grows toward want as soon as it is kept, so a more important
+// column is full before a less important one is squeezed. A min of 0 leaves it out.
+// The flex column takes the room that the other columns leave, but no more than max.
 type column struct {
-	min, want int
-	flex      bool
+	min, want, max int
+	flex           bool
 }
 
 // fitColumns sizes a row of cols w cells wide, with gap cells between the columns it
 // keeps. The columns come in priority order, most important first. A column is kept
 // only if every column before it is, so a narrow row drops its least important
-// columns, which are the last in the list. A kept column grows toward its want as
-// soon as it is kept, so a more important column is full before a less important one
-// is squeezed, and a flex column takes what is left. It returns each column's width
-// in the same order, 0 where the column is left out.
+// columns, which are the last in the list. The flex column is the first one that is
+// kept, and it grows last. It returns each column's width in the same order, 0 where
+// the column is left out.
 func fitColumns(w, gap int, cols []column) []int {
 	widths := make([]int, len(cols))
 	used, flex := 0, -1
@@ -37,20 +40,35 @@ func fitColumns(w, gap int, cols []column) []int {
 		}
 		used += need
 		widths[i] = c.min
-		if c.flex {
-			if flex < 0 {
-				flex = i
-			}
-			continue
-		}
 		grow := min(max(c.want-c.min, 0), w-used)
 		widths[i] += grow
 		used += grow
+		if c.flex && flex < 0 {
+			flex = i
+		}
 	}
 	if flex >= 0 {
-		widths[flex] += w - used
+		top := max(cols[flex].max, cols[flex].want)
+		widths[flex] += min(max(top-widths[flex], 0), w-used)
 	}
 	return widths
+}
+
+// sizedCol is the column for cells: as wide as the widest of them, at most most, and
+// at least least. The header under head counts toward the width. A column whose cells
+// are all empty is left out.
+func sizedCol(head string, cells []string, least, most int, flex bool) column {
+	longest := 0
+	for _, c := range cells {
+		longest = max(longest, displayWidth(c))
+	}
+	if longest == 0 {
+		return column{}
+	}
+	want := min(max(longest, displayWidth(head)), most)
+	// max is the content width too: a flex column grows to fit its widest cell, never
+	// past it, so no gap opens before the next column.
+	return column{min: min(least, want), want: want, max: want, flex: flex}
 }
 
 // cell is the text of one column of a row, in its style. A cell of width 0 is left out.

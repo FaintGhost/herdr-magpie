@@ -89,7 +89,7 @@ func TestRoutingTabShowsRoutesStatusesAndTTFT(t *testing.T) {
 	press(m, "4")
 	view := m.View()
 	for _, want := range []string{
-		"last 1h · 1 swapped", "gpt-x → gpt-y", "429", "800ms", "1.2s", "requested → served", "openai",
+		"last 1h · 1 swapped", "gpt-x → gpt-y", "429", "800ms", "1.2s", "REQUESTED → SERVED", "openai",
 	} {
 		if !strings.Contains(view, want) {
 			t.Errorf("Routing tab lacks %q:\n%s", want, view)

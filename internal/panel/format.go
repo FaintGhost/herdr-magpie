@@ -14,8 +14,8 @@ import (
 // barCells is how many cells a usage bar draws.
 const barCells = 10
 
-// displayWidth is the number of terminal columns s takes. It is the launcher's
-// rule, so the sessions list and the rest of the panel agree on Chinese text.
+// displayWidth is the number of terminal columns s takes. It is the launcher's width
+// helper, the one rule that both screens measure text by.
 func displayWidth(s string) int {
 	return launcher.DisplayWidth(s)
 }
@@ -27,10 +27,7 @@ func fit(s string, w int) string {
 
 // rjust right-aligns s in w columns. A s wider than w is cut.
 func rjust(s string, w int) string {
-	if sw := displayWidth(s); sw < w {
-		return strings.Repeat(" ", w-sw) + s
-	}
-	return fit(s, w)
+	return launcher.RJust(s, w)
 }
 
 // clean makes external text fit for one screen line. Control characters, newlines
@@ -98,9 +95,9 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%dd %dh", int(d/(24*time.Hour)), int(d%(24*time.Hour)/time.Hour))
 }
 
-// resetText says when a usage window starts again, given now. A reset time that
-// is already behind now means the reading is older than that, so it says so. A
-// zero time is unknown and gives "".
+// resetText says how long until a usage window starts again, given now, as
+// formatDuration writes it. A reset time that is already behind now means the reading
+// is older than that, so it says "reset passed". A zero time is unknown and gives "".
 func resetText(now, at time.Time) string {
 	if at.IsZero() {
 		return ""
@@ -109,7 +106,7 @@ func resetText(now, at time.Time) string {
 	if d < 0 {
 		return "reset passed"
 	}
-	return "resets in " + formatDuration(d)
+	return formatDuration(d)
 }
 
 // ago says how long before now a reading was taken, in one unit.

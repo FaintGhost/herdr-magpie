@@ -76,17 +76,16 @@ func agentBlocks(agents []magpie.AgentInfo, panes []herdr.Agent) []agentBlock {
 	return blocks
 }
 
-// Columns of an agent row, in terminal cells. The mark takes markW cells, and the
-// columns after it are agentGap apart. Each column's want is the widest value on
-// screen, up to its maximum, so the rows line up.
+// Widths of the Agents tab's columns, in cells. Each column is as wide as its widest
+// value, up to its maximum. The model takes the room that the others leave, up to its
+// maximum. A narrow row drops the config path first, then the other fields, then the
+// reasoning, so the name and the model stay.
 const (
-	markW          = 2
-	agentGap       = 2
 	agentNameMax   = 18
 	agentNameMin   = 8
 	agentModelMax  = 40 // a model name is shown in full up to this many cells
 	agentModelMin  = 12
-	agentEffortMax = 16
+	agentReasonMax = 28 // shown whole or not at all: its least is its widest value
 	agentOtherMax  = 40
 	agentOtherMin  = 8
 	agentPathMax   = 36
@@ -95,40 +94,27 @@ const (
 
 // agentCols is the width of each column of the Agents tab, 0 where a column is left out.
 type agentCols struct {
-	name, model, effort, other, path int
+	name, model, reason, other, path int
 }
 
-// agentColumns sizes the Agents tab's columns in w cells, for the agents it lists. The
-// name and the model come first, then the effort, the other fields and the config
-// path. A narrow row drops the config path first, then the other fields, then the
-// effort, so the name and the model stay.
-func agentColumns(agents []magpie.AgentInfo, home string, w int) agentCols {
-	var name, model, effort, other, path int
+// agentColumns sizes the Agents tab's columns in cw cells, for the agents it lists.
+func agentColumns(agents []magpie.AgentInfo, home string, cw int) agentCols {
+	var names, models, reasons, others, paths []string
 	for _, a := range agents {
-		name = max(name, displayWidth(agentName(a)))
-		model = max(model, displayWidth(agentModel(a)))
-		effort = max(effort, displayWidth(agentEffort(a)))
-		other = max(other, displayWidth(agentOther(a)))
-		path = max(path, displayWidth(agentPath(a, home)))
+		names = append(names, agentName(a))
+		models = append(models, agentModel(a))
+		reasons = append(reasons, agentReason(a))
+		others = append(others, agentOther(a))
+		paths = append(paths, agentPath(a, home))
 	}
-	widths := fitColumns(w-markW, agentGap, []column{
-		fieldColumn(name, agentNameMax, agentNameMin),
-		fieldColumn(model, agentModelMax, agentModelMin),
-		fieldColumn(effort, agentEffortMax, agentEffortMax), // all or nothing
-		fieldColumn(other, agentOtherMax, agentOtherMin),
-		fieldColumn(path, agentPathMax, agentPathMin),
+	widths := fitColumns(cw, tableGap, []column{
+		sizedCol("AGENT", names, agentNameMin, agentNameMax, false),
+		sizedCol("MODEL", models, agentModelMin, agentModelMax, true),
+		sizedCol("REASONING", reasons, agentReasonMax, agentReasonMax, false),
+		sizedCol("OTHER", others, agentOtherMin, agentOtherMax, false),
+		sizedCol("CONFIG", paths, agentPathMin, agentPathMax, false),
 	})
-	return agentCols{name: widths[0], model: widths[1], effort: widths[2], other: widths[3], path: widths[4]}
-}
-
-// fieldColumn is the column for content as wide as longest: it takes up to most cells,
-// and shrinks to no less than least. Content that is empty leaves the column out.
-func fieldColumn(longest, most, least int) column {
-	want := min(longest, most)
-	if want <= 0 {
-		return column{}
-	}
-	return column{min: min(least, want), want: want}
+	return agentCols{name: widths[0], model: widths[1], reason: widths[2], other: widths[3], path: widths[4]}
 }
 
 // agentName is the agent's name as magpie shows it, or its id, or a stand-in.
@@ -141,25 +127,27 @@ func agentModel(a magpie.AgentInfo) string {
 	return cmp.Or(clean(a.Model()), "—")
 }
 
-// agentEffort is the agent's effort as "effort high", or "" when it has none.
-func agentEffort(a magpie.AgentInfo) string {
+// agentReason is the agent's reasoning settings: "effort high" and "thinking on", as
+// they are set, joined by " · ". It is "" when the agent has neither.
+func agentReason(a magpie.AgentInfo) string {
+	var parts []string
 	for _, f := range a.Fields {
-		if f.Name == "effort" {
-			return "effort " + cmp.Or(clean(f.Value), "—")
+		if f.Name == "effort" || f.Name == "thinking" {
+			parts = append(parts, clean(f.Name)+" "+cmp.Or(clean(f.Value), "—"))
 		}
 	}
-	return ""
+	return strings.Join(parts, " · ")
 }
 
-// agentOther is the agent's fields other than its model and effort, as "thinking on ·
-// subagent model x". A hidden agent's tag comes first.
+// agentOther is the agent's fields other than its model and its reasoning, as
+// "subagent model x". A hidden agent's tag comes first.
 func agentOther(a magpie.AgentInfo) string {
 	var parts []string
 	if a.Hidden {
 		parts = append(parts, "hidden")
 	}
 	for _, f := range a.Fields {
-		if f.Name == "model" || f.Name == "effort" {
+		if f.Name == "model" || f.Name == "effort" || f.Name == "thinking" {
 			continue
 		}
 		parts = append(parts, clean(f.Name)+" "+cmp.Or(clean(f.Value), "—"))
@@ -172,30 +160,61 @@ func agentPath(a magpie.AgentInfo, home string) string {
 	return launcher.ShortPath(clean(a.ConfigPath), home)
 }
 
-// agentLine is one agent's row: name, model, effort, the other fields, and the config
-// path, which is cut from its front. A hidden agent is dimmed.
-func agentLine(a magpie.AgentInfo, selected bool, w int, home string, st styles, cols agentCols) string {
-	base := st.base
-	if a.Hidden {
-		base = st.dim
+// agentHeader is the Agents tab's column titles, dimmed.
+func agentHeader(cols agentCols, st styles) []cell {
+	return []cell{
+		{text: "AGENT", style: st.dim, width: cols.name},
+		{text: "MODEL", style: st.dim, width: cols.model},
+		{text: "REASONING", style: st.dim, width: cols.reason},
+		{text: "OTHER", style: st.dim, width: cols.other},
+		{text: "CONFIG", style: st.dim, width: cols.path},
 	}
-	mark, title := "  ", base
-	if selected {
-		mark, title = "▸ ", st.bold
-	}
-	cells := []cell{
-		{text: agentName(a), style: title, width: cols.name},
-		{text: agentModel(a), style: base, width: cols.model},
-		{text: agentEffort(a), style: base, width: cols.effort},
-		{text: agentOther(a), style: base, width: cols.other},
-		{text: launcher.TailFit(agentPath(a, home), cols.path), style: st.dim, width: cols.path},
-	}
-	return line(w, append([]seg{{mark, base}}, cellSegs(cells, agentGap, base)...)...)
 }
 
-// paneLine is one pane that runs the agent, indented under it: its id, agent, status
-// and directory. The directory is cut from its front to fit.
-func paneLine(p herdr.Agent, dim bool, w int, home string, st styles) string {
+// agentLine is one agent's row: its name, model, reasoning, other fields and config
+// path. The selected row is bold, and a hidden agent is dimmed.
+func agentLine(a magpie.AgentInfo, selected bool, bw int, home string, st styles, cols agentCols) string {
+	base := st.base
+	switch {
+	case selected:
+		base = st.bold
+	case a.Hidden:
+		base = st.dim
+	}
+	path := ""
+	if cols.path > 0 {
+		path = launcher.TailFit(agentPath(a, home), cols.path)
+	}
+	return markLine(bw, selected, st, []cell{
+		{text: agentName(a), style: base, width: cols.name},
+		{text: agentModel(a), style: base, width: cols.model},
+		{text: agentReason(a), style: base, width: cols.reason},
+		{text: agentOther(a), style: base, width: cols.other},
+		{text: path, style: st.dim, width: cols.path},
+	})
+}
+
+// paneCols is the width of the pane id and the status in the pane lines, so that the
+// directories of every pane on the tab start in the same column.
+type paneCols struct {
+	id, status int
+}
+
+// paneColumns sizes the pane id and status columns for the panes of blocks.
+func paneColumns(blocks []agentBlock) paneCols {
+	var pc paneCols
+	for _, b := range blocks {
+		for _, p := range b.panes {
+			pc.id = max(pc.id, displayWidth(cmp.Or(clean(p.PaneID), "?")))
+			pc.status = max(pc.status, displayWidth(cmp.Or(clean(p.Status), "unknown")))
+		}
+	}
+	return pc
+}
+
+// paneLine is one pane that runs the agent, indented under it: its id, status and
+// directory, as "└ <pane>  <status>  <dir>". The directory is cut from its front.
+func paneLine(p herdr.Agent, dim bool, bw int, home string, st styles, pc paneCols) string {
 	base := st.base
 	if dim {
 		base = st.dim
@@ -205,29 +224,37 @@ func paneLine(p herdr.Agent, dim bool, w int, home string, st styles) string {
 	if status == "blocked" {
 		statusStyle = st.warn
 	}
-	head := "    " + cmp.Or(clean(p.PaneID), "?") + " · " + cmp.Or(clean(p.Agent), "?") + " · "
-	dirW := max(w-displayWidth(head)-displayWidth(status)-3, 0)
-	dir := launcher.TailFit(launcher.ShortPath(clean(p.CWD), home), dirW)
-	return line(w, seg{head, base}, seg{status, statusStyle}, seg{" · ", base}, seg{dir, st.dim})
+	const indent = "    └ " // the agent's name is at column 2 of the body, so the pane's mark is at 4
+	used := displayWidth(indent) + pc.id + tableGap + pc.status + tableGap
+	dir := launcher.TailFit(launcher.ShortPath(clean(p.CWD), home), max(bw-used, 0))
+	return line(bw,
+		seg{indent, base},
+		seg{fit(cmp.Or(clean(p.PaneID), "?"), pc.id), base},
+		seg{strings.Repeat(" ", tableGap), base},
+		seg{fit(status, pc.status), statusStyle},
+		seg{strings.Repeat(" ", tableGap), base},
+		seg{dir, st.dim},
+	)
 }
 
-// agentsLines draws the Agents tab in h lines: each agent with its panes below it.
-// The selected agent's block is always on screen.
+// agentsLines draws the Agents tab in h lines: the column titles, then each agent with
+// its panes below it. The selected agent's block is always on screen.
 func (m *Model) agentsLines(w, h int) []string {
 	st := m.st
+	bw, cw := splitWidth(w)
 	var out []string
 	if e := m.feeds[feedAgents].err; e != "" {
-		out = append(out, line(w, seg{"agents: " + clean(e), st.warn}))
+		out = append(out, noteLine(bw, st.warn, "agents: "+clean(e)))
 	}
 	if e := m.panes.err; e != "" {
-		out = append(out, line(w, seg{"herdr agents: " + clean(e), st.warn}))
+		out = append(out, noteLine(bw, st.warn, "herdr agents: "+clean(e)))
 	}
 	agents := m.snap.Agents.Data
 	switch {
 	case len(agents) == 0 && m.loading(feedAgents):
-		return append(out, line(w, seg{"loading…", st.dim}))
+		return append(out, noteLine(bw, st.dim, "loading…"))
 	case len(agents) == 0:
-		return append(out, line(w, seg{"no agents reported; press r to refresh", st.dim}))
+		return append(out, noteLine(bw, st.dim, "no agents reported; press r to refresh"))
 	}
 	blocks := agentBlocks(agents, m.panes.list)
 	cur := min(max(m.agentCursor, 0), len(blocks)-1)
@@ -235,13 +262,15 @@ func (m *Model) agentsLines(w, h int) []string {
 	for i, b := range blocks {
 		heights[i] = 1 + len(b.panes)
 	}
-	cols := agentColumns(agents, m.home, w)
+	cols := agentColumns(agents, m.home, cw)
+	pc := paneColumns(blocks)
+	out = append(out, markLine(bw, false, st, agentHeader(cols, st)))
 	start, end := visibleSpan(heights, cur, h-len(out))
 	for i := start; i < end; i++ {
 		b := blocks[i]
-		out = append(out, agentLine(b.agent, i == cur, w, m.home, st, cols))
+		out = append(out, agentLine(b.agent, i == cur, bw, m.home, st, cols))
 		for _, p := range b.panes {
-			out = append(out, paneLine(p, b.agent.Hidden, w, m.home, st))
+			out = append(out, paneLine(p, b.agent.Hidden, bw, m.home, st, pc))
 		}
 	}
 	return out

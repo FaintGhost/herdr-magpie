@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"strings"
 	"time"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Screen sizes the panel assumes when the terminal does not report one.
@@ -12,9 +14,35 @@ const (
 	defaultHeight = 24
 )
 
-// View draws the panel: the tab bar, the age of the data, the body, the status
-// line and the key hints. It is exactly the terminal's height, and every line is
-// exactly its width, so no row keeps stale text.
+// gutterW is the width of the gutter at the left of every line. A selected row has
+// its mark in it, and every other line starts with a blank gutter, so the text of
+// the body starts in the same column on every line.
+const gutterW = 2
+
+// maxContent is the widest the content area is, however wide the terminal is.
+const maxContent = 120
+
+// contentWidth is the width of the content area on a w-column screen: the screen less
+// a margin on each side, and at most maxContent.
+func contentWidth(w int) int {
+	return min(max(w-2*gutterW, 0), maxContent)
+}
+
+// bodyWidth is the width a body line is drawn in on a w-column screen: the gutter and
+// the content area. The columns to the right of it are blank.
+func bodyWidth(w int) int {
+	return min(gutterW+contentWidth(w), w)
+}
+
+// splitWidth returns bodyWidth(w) and the content width inside it, which excludes the gutter.
+func splitWidth(w int) (bw, cw int) {
+	bw = bodyWidth(w)
+	return bw, max(bw-gutterW, 0)
+}
+
+// View draws the panel: the tab bar, the age of the data, the body, the status line
+// and the key hints. It is exactly the terminal's height, and every line is exactly
+// its width, so no row keeps stale text.
 func (m *Model) View() string {
 	w, h := m.width, m.height
 	if w <= 0 {
@@ -29,6 +57,28 @@ func (m *Model) View() string {
 	lines = append(lines, m.body(w, h-head-foot)...)
 	lines = append(lines, []string{m.statusLine(w), m.hintLine(w)}[2-foot:]...)
 	return strings.Join(lines, "\n")
+}
+
+// chromeLine draws a line outside the body, in w columns: the gutter's width of blank,
+// then the text in the rest.
+func chromeLine(w int, segs ...seg) string {
+	g := min(gutterW, w)
+	return strings.Repeat(" ", g) + line(w-g, segs...)
+}
+
+// markLine draws one row of a table in bw columns: the selection mark in the gutter,
+// then the cells. A selected row is drawn with its mark, in bold.
+func markLine(bw int, sel bool, st styles, cells []cell) string {
+	mark := seg{"  ", st.base}
+	if sel {
+		mark = seg{"▸ ", st.bold}
+	}
+	return line(bw, append([]seg{mark}, cellSegs(cells, tableGap, st.base)...)...)
+}
+
+// noteLine is a line of body text, in bw columns, after the blank gutter.
+func noteLine(bw int, style lipgloss.Style, text string) string {
+	return line(bw, seg{"  ", style}, seg{text, style})
 }
 
 // tabBar draws the tab names with · between them. The active tab is in reverse
@@ -49,7 +99,7 @@ func (m *Model) tabBar(w int) string {
 			segs = append(segs, seg{" " + name + " ", m.st.active})
 		}
 	}
-	return line(w, segs...)
+	return chromeLine(w, segs...)
 }
 
 // ageText says how old the data on this tab is, and whether a refresh is running:
@@ -88,11 +138,12 @@ func (m *Model) ageText() string {
 
 // ageLine is the line under the tab bar.
 func (m *Model) ageLine(w int) string {
-	return line(w, seg{m.ageText(), m.st.dim})
+	return chromeLine(w, seg{m.ageText(), m.st.dim})
 }
 
-// body draws the current tab in exactly n lines. The restart walk and the profile
-// list cover the tab while they are open.
+// body draws the current tab in exactly n lines. Each line is the body width of the
+// tab's own, and the rest of the screen's width is blank. The restart walk and the
+// profile list cover the tab while they are open.
 func (m *Model) body(w, n int) []string {
 	var lines []string
 	switch {
@@ -111,13 +162,14 @@ func (m *Model) body(w, n int) []string {
 	case m.tab == tabSessions:
 		lines = m.sessionsLines(w, n)
 	}
+	bw := bodyWidth(w)
 	out := make([]string, n)
 	for i := range out {
+		l := line(bw)
 		if i < len(lines) {
-			out[i] = lines[i]
-		} else {
-			out[i] = line(w)
+			l = lines[i]
 		}
+		out[i] = l + strings.Repeat(" ", w-bw)
 	}
 	return out
 }
@@ -128,17 +180,17 @@ func (m *Model) body(w, n int) []string {
 func (m *Model) statusLine(w int) string {
 	switch {
 	case m.ask != nil:
-		return line(w, seg{m.ask.text, m.st.warn.Bold(true)})
+		return chromeLine(w, seg{m.ask.text, m.st.warn.Bold(true)})
 	case m.prof.open && m.prof.naming:
-		return line(w, seg{"Save current setup as: " + clean(m.prof.name) + "▏", m.st.bold})
+		return chromeLine(w, seg{"Save current setup as: " + clean(m.prof.name) + "▏", m.st.bold})
 	case m.writing:
-		return line(w, seg{cmp.Or(m.writeText, "working…"), m.st.warn})
+		return chromeLine(w, seg{cmp.Or(m.writeText, "working…"), m.st.warn})
 	case m.notice != "":
-		return line(w, seg{clean(m.notice), m.st.noticeStyle(m.noticeKind)})
+		return chromeLine(w, seg{clean(m.notice), m.st.noticeStyle(m.noticeKind)})
 	case m.saveErr != "":
-		return line(w, seg{"cache not saved: " + clean(m.saveErr), m.st.bad})
+		return chromeLine(w, seg{"cache not saved: " + clean(m.saveErr), m.st.bad})
 	}
-	return line(w)
+	return chromeLine(w)
 }
 
 // hintLine lists the keys that work in the current state.
@@ -162,7 +214,7 @@ func (m *Model) hintLine(w int) string {
 	default:
 		text = m.tabHints()
 	}
-	return line(w, seg{text, m.st.dim})
+	return chromeLine(w, seg{text, m.st.dim})
 }
 
 // tabHints is the hint line of the current tab, in its normal state.

@@ -240,11 +240,12 @@ func (m *Model) keyWalk(k string) tea.Cmd {
 // pane with its state, and the step being asked about marked.
 func (m *Model) restartLines(w, h int) []string {
 	st := m.st
+	bw, _ := splitWidth(w)
 	heading := "Restart after " + m.walk.reason
 	if m.walk.done {
 		heading += " · done"
 	}
-	out := []string{line(w, seg{heading, st.bold})}
+	out := []string{line(bw, seg{"  ", st.base}, seg{heading, st.bold})}
 	steps := m.walk.steps
 	heights := make([]int, len(steps))
 	for i := range heights {
@@ -257,7 +258,7 @@ func (m *Model) restartLines(w, h int) []string {
 	cur = min(max(cur, 0), len(steps)-1)
 	start, end := visibleSpan(heights, cur, h-len(out))
 	for i := start; i < end; i++ {
-		out = append(out, restartLine(steps[i], i == cur && !m.walk.done, w, m.home, st))
+		out = append(out, restartLine(steps[i], i == cur && !m.walk.done, bw, m.home, st))
 	}
 	return out
 }

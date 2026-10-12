@@ -1,6 +1,7 @@
 package panel
 
 import (
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -101,64 +102,86 @@ func assertLines(t *testing.T, lines []string, w int) {
 	}
 }
 
-func TestCardLinesFitAndCarryTheNumbers(t *testing.T) {
+// accountCols is the account columns for cards, as the tab sizes them.
+func accountCols(cards []card) acctCols {
+	return acctColumns(cards)
+}
+
+func TestAccountLinesFitAndCarryTheNumbers(t *testing.T) {
 	src := sampleSource()
 	cards := buildCards(src.quotas, src.accounts)
 	for _, w := range []int{40, 80, 120} {
-		lines := cardLines(cards[0], true, testNow, src.agents, w, newStyles(newRenderer(io.Discard, false)))
+		bw, _ := splitWidth(w)
+		lines := accountLines(cards[0], true, testNow, bw, accountCols(cards), newStyles(newRenderer(io.Discard, false)))
 		assertLines(t, lines, w)
 		got := strings.Join(lines, "\n")
-		for _, want := range []string{"▸ ", "Claude Code", "Max 20x", "● active", "62% used"} {
-			if w >= 80 && !strings.Contains(got, want) {
-				t.Errorf("w=%d: card lacks %q:\n%s", w, want, got)
+		if w >= 80 {
+			for _, want := range []string{"▸ ", "Max 20x", "dev@example.test", "● active", "62%", "2h14m"} {
+				if !strings.Contains(got, want) {
+					t.Errorf("w=%d: account lacks %q:\n%s", w, want, got)
+				}
 			}
 		}
-		if w >= 80 && !strings.Contains(got, "resets in 2h14m") {
-			t.Errorf("w=%d: card lacks the reset countdown:\n%s", w, got)
-		}
 	}
 }
 
-func TestCardLinesCutLongAccount(t *testing.T) {
+func TestAccountLinesCutLongAccount(t *testing.T) {
 	c := card{quota: magpie.Quota{
 		Provider: "claude", Name: "Claude Code", Kind: "subscription", Plan: "Max 20x",
-		User:    "someone.with.a.very.long.address@example.test",
+		User:    "someone.with.a.very.long.address.that.keeps.going@example.test",
 		Windows: []magpie.QuotaWindow{{Name: "5 hours", Used: 10}},
 	}}
-	lines := cardLines(c, false, testNow, nil, 40, newStyles(newRenderer(io.Discard, false)))
-	assertLines(t, lines, 40)
+	bw, _ := splitWidth(60)
+	lines := accountLines(c, false, testNow, bw, acctColumns([]card{c}), newStyles(newRenderer(io.Discard, false)))
+	assertLines(t, lines, 60)
 	if !strings.Contains(lines[0], "…") {
-		t.Errorf("title %q should be cut with an ellipsis", lines[0])
+		t.Errorf("the account %q should be cut with an ellipsis", lines[0])
 	}
 }
 
-func TestCardLinesManyWindows(t *testing.T) {
+func TestAccountWindowsWrapUnderTheFirst(t *testing.T) {
+	c := card{quota: magpie.Quota{Provider: "codex", Kind: "subscription", Name: "Codex", Plan: "Plus", User: "dev@example.test"}}
+	for i := range 3 {
+		c.quota.Windows = append(c.quota.Windows, magpie.QuotaWindow{Name: "window " + string(rune('a'+i)), Used: 50})
+	}
+	bw, _ := splitWidth(60)
+	lines := accountLines(c, false, testNow, bw, acctColumns([]card{c}), newStyles(newRenderer(io.Discard, false)))
+	if len(lines) < 2 {
+		t.Fatalf("three windows at 60 columns should wrap:\n%s", strings.Join(lines, "\n"))
+	}
+	first := strings.Index(lines[0], "window a")
+	if first < 0 || !strings.HasPrefix(strings.TrimLeft(lines[1], " "), "window b") {
+		t.Errorf("the second window should follow on its own line:\n%s", strings.Join(lines, "\n"))
+	}
+	if got := displayWidth(lines[1][:strings.Index(lines[1], "window b")]); got != first {
+		t.Errorf("the wrapped window starts at column %d, the first at %d", got, first)
+	}
+}
+
+func TestAccountManyWindowsCountTheRest(t *testing.T) {
 	c := card{quota: magpie.Quota{Provider: "codex", Kind: "subscription", Name: "Codex"}}
 	for i := range 6 {
 		c.quota.Windows = append(c.quota.Windows, magpie.QuotaWindow{Name: "w" + string(rune('a'+i)), Used: 1})
 	}
-	lines := cardLines(c, false, testNow, nil, 80, newStyles(newRenderer(io.Discard, false)))
-	got := strings.Join(lines, "\n")
-	if !strings.Contains(got, "+3 more windows") {
+	bw, _ := splitWidth(200)
+	got := strings.Join(accountLines(c, false, testNow, bw, acctColumns([]card{c}), newStyles(newRenderer(io.Discard, false))), "\n")
+	if !strings.Contains(got, fmt.Sprintf("+%d more windows", 6-(maxWindowRows-1))) {
 		t.Errorf("six windows should show %d and count the rest:\n%s", maxWindowRows-1, got)
-	}
-	if n := len(lines); n != 1+maxWindowRows+1 {
-		t.Errorf("card has %d lines, want %d (title, windows, blank)", n, 1+maxWindowRows+1)
 	}
 }
 
-func TestBalanceCardShowsTheBalance(t *testing.T) {
+func TestBalanceAccountShowsTheBalance(t *testing.T) {
 	src := sampleSource()
 	cards := buildCards(src.quotas, src.accounts)
 	st := newStyles(newRenderer(io.Discard, false))
-	lines := cardLines(cards[3], false, testNow, src.agents, 80, st)
-	if got := strings.Join(lines, "\n"); !strings.Contains(got, "balance: not reported") {
-		t.Errorf("balance card without an amount:\n%s", got)
+	bw, _ := splitWidth(80)
+	cols := accountCols(cards)
+	if got := strings.Join(accountLines(cards[3], false, testNow, bw, cols, st), "\n"); !strings.Contains(got, "balance: not reported") {
+		t.Errorf("balance without an amount:\n%s", got)
 	}
 	cards[3].quota.Balance = "$12.34"
-	lines = cardLines(cards[3], false, testNow, src.agents, 80, st)
-	if got := strings.Join(lines, "\n"); !strings.Contains(got, "balance: $12.34") {
-		t.Errorf("balance card:\n%s", got)
+	if got := strings.Join(accountLines(cards[3], false, testNow, bw, cols, st), "\n"); !strings.Contains(got, "balance: $12.34") {
+		t.Errorf("balance:\n%s", got)
 	}
 }
 
@@ -168,14 +191,15 @@ func TestQuotaErrorReplacesTheWindows(t *testing.T) {
 		Windows: []magpie.QuotaWindow{{Name: "5 hours", Used: 62}},
 		Error:   "token expired\nlog in again",
 	}}
-	lines := cardLines(c, false, testNow, nil, 80, newStyles(newRenderer(io.Discard, false)))
+	bw, _ := splitWidth(80)
+	lines := accountLines(c, false, testNow, bw, acctColumns([]card{c}), newStyles(newRenderer(io.Discard, false)))
 	assertLines(t, lines, 80)
 	got := strings.Join(lines, "\n")
-	if !strings.Contains(got, "error: token expired log in again") {
-		t.Errorf("card lacks its error line:\n%s", got)
+	if !strings.Contains(got, "⚠ token expired log in again") {
+		t.Errorf("the account lacks its error inline:\n%s", got)
 	}
 	if strings.Contains(got, "5 hours") || strings.Contains(got, "used") {
-		t.Errorf("an errored card should not draw its windows:\n%s", got)
+		t.Errorf("an errored account should not draw its windows:\n%s", got)
 	}
 }
 
@@ -198,7 +222,7 @@ func TestWindowColoursByUsage(t *testing.T) {
 		{used: 95, wantRed: true},
 	}
 	for _, tc := range tests {
-		got := windowLine(magpie.QuotaWindow{Name: "5 hours", Used: tc.used}, testNow, 80, st)
+		got := line(80, windowSegs(magpie.QuotaWindow{Name: "5 hours", Used: tc.used}, testNow, st)...)
 		if has := strings.Contains(got, "\x1b[33m"); has != tc.wantYellow {
 			t.Errorf("used %v: yellow = %v, want %v", tc.used, has, tc.wantYellow)
 		}
@@ -210,11 +234,11 @@ func TestWindowColoursByUsage(t *testing.T) {
 
 func TestNoColourIsPlain(t *testing.T) {
 	st := newStyles(newRenderer(io.Discard, false))
-	got := windowLine(magpie.QuotaWindow{Name: "5 hours", Used: 95}, testNow, 80, st)
+	got := line(80, windowSegs(magpie.QuotaWindow{Name: "5 hours", Used: 95}, testNow, st)...)
 	if strings.Contains(got, "\x1b") {
 		t.Errorf("plain renderer wrote an escape sequence: %q", got)
 	}
-	if !strings.Contains(got, "95% used") {
+	if !strings.Contains(got, " 95%") {
 		t.Errorf("plain line lost the number: %q", got)
 	}
 }
